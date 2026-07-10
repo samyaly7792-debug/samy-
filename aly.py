@@ -23,7 +23,12 @@ html_template = """
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         html, body { height: 100%; overflow: hidden; background-color: #121212; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #e0e0e0; direction: rtl; }
-        
+    import os
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
+    
         #chat-container { display: flex; flex-direction: column; height: 100%; max-width: 600px; margin: 0 auto; background: #1e1e1e; border-left: 1px solid #2d2d2d; border-right: 1px solid #2d2d2d; position: relative; }
         
         #header { background: #252525; padding: 12px; text-align: center; font-weight: bold; font-size: 1.2rem; border-bottom: 1px solid #2d2d2d; color: #0084ff; flex-shrink: 0; }
