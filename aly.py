@@ -270,3 +270,9 @@ def on_kick(data):
             target_name = active_sessions[target_id]['name']
             emit('kicked', room=target_id)
             emit('status', {'msg': f'🚫 قام الملك بطرد [{target_name}] من الشات!'}, broadcast=True)
+import os
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
+        
