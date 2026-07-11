@@ -1,41 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
-    <title>شات المهندس</title>
+    <meta charset="UTF-8">
+    <title>شات المهندس المطور</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; padding: 10px; }
+        #chat-ui { display: block; border: 1px solid #333; padding: 15px; border-radius: 10px; }
+        #messages { height: 250px; overflow-y: scroll; border: 1px solid #444; padding: 10px; margin: 10px 0; }
+        #user-list { color: #ffeb3b; list-style: square; padding-right: 20px; }
+        .system { color: #00e676; font-weight: bold; }
+        .msg-line { margin-bottom: 5px; border-bottom: 1px solid #222; }
+    </style>
 </head>
 <body>
-    <h1>شات المهندس - مكانك آمن</h1>
+    <h2 style="text-align: center;">🛡️ شات المهندس - مكانك آمن 🛡️</h2>
     
-    <!-- منطقة القائمة -->
-    <h3>المتصلون:</h3>
-    <ul id="user-list"></ul>
-
-    <!-- منطقة الرسائل -->
-    <div id="messages"></div>
+    <div id="chat-ui">
+        <h4>المتصلون حالياً:</h4>
+        <ul id="user-list"><li>جاري الاتصال بالسيرفر...</li></ul>
+        
+        <div id="messages"></div>
+        
+        <div style="display: flex;">
+            <input type="text" id="msg" style="flex: 1; padding: 10px;" placeholder="اكتب رسالتك هنا...">
+            <button onclick="send()" style="padding: 10px 20px; background: #2196f3; color: white; border: none;">إرسال</button>
+        </div>
+    </div>
 
     <script>
         var socket = io();
 
+        // تنبيه في حال حدوث خطأ في الاتصال
+        socket.on('connect_error', () => {
+            document.getElementById('messages').innerHTML = '<div class="system">⚠️ خطأ: تعذر الاتصال بالسيرفر، حاول تحديث الصفحة.</div>';
+        });
+
+        // استقبال النظام
         socket.on('status', (d) => {
             const div = document.createElement('div');
-            div.innerText = d.msg;
+            div.className = 'system';
+            div.innerText = "نظام: " + d.msg;
             document.getElementById('messages').appendChild(div);
         });
 
+        // استقبال القائمة (مع إضافة كود التحديث التلقائي)
         socket.on('user_list', (users) => {
             const list = document.getElementById('user-list');
             list.innerHTML = '';
             for (let id in users) {
-                list.innerHTML += '<li>' + users[id].name + '</li>';
+                const li = document.createElement('li');
+                li.innerText = users[id].name;
+                list.appendChild(li);
             }
         });
 
+        // استقبال الرسائل
         socket.on('message', (d) => {
             const div = document.createElement('div');
+            div.className = 'msg-line';
             div.innerHTML = '<b>' + d.sender + ':</b> ' + d.msg;
             document.getElementById('messages').appendChild(div);
+            // تحريك الشاشة لأسفل تلقائياً
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
         });
+
+        function send() {
+            const m = document.getElementById('msg');
+            if (m.value.trim() !== "") {
+                socket.emit('text', { msg: m.value });
+                m.value = '';
+            }
+        }
     </script>
 </body>
 </html>
