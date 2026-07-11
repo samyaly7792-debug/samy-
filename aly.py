@@ -4,13 +4,15 @@ import random
 import os
 
 app = Flask(__name__)
+# الإعدادات لضمان تحديث الواجهة فوراً
 app.config['SECRET_KEY'] = 'samy_king_final_2026'
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # قاعدة بيانات المستخدمين النشطين
 active_sessions = {}
 
-# الإعدادات الخاصة بالمهندس (Admin)
+# بيانات الدخول الخاصة بالمهندس
 ADMIN_NAME = "المهندس"
 ADMIN_PASS = "Samy779h"
 
@@ -49,14 +51,6 @@ def on_text(data):
             'avatar': user_data['avatar'], 
             'msg': data['msg']
         }, broadcast=True)
-
-@socketio.on('kick_user')
-def on_kick(data):
-    if active_sessions.get(request.sid, {}).get('is_admin'):
-        target_id = data['id']
-        if target_id in active_sessions:
-            emit('kicked', room=target_id)
-            emit('status', {'msg': f'🚫 قام المهندس بطرد أحد المستخدمين!'}, broadcast=True)
 
 @socketio.on('disconnect')
 def on_disconnect():
