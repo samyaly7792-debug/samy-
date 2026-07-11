@@ -1,18 +1,15 @@
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit, disconnect
 import random
-import os
 
 app = Flask(__name__)
-# الإعدادات لضمان تحديث الواجهة فوراً
 app.config['SECRET_KEY'] = 'samy_king_final_2026'
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# قاعدة بيانات المستخدمين النشطين
-active_sessions = {}
+# قاعدة بيانات المستخدمين
+active_users = {}
 
-# بيانات الدخول الخاصة بالمهندس
+# بيانات المالك
 ADMIN_NAME = "المهندس"
 ADMIN_PASS = "Samy779h"
 
@@ -20,46 +17,53 @@ ADMIN_PASS = "Samy779h"
 def index():
     return render_template('index.html')
 
-@socketio.on('check_join')
-def on_check_join(data):
-    nickname = data.get('name', '').strip()
-    password = data.get('pass', '').strip()
+@socketio.on('join')
+def on_join(data):
+    name = data.get('name', 'زائر')
+    password = data.get('pass', '')
     
-    # التحقق من صلاحيات المهندس
-    if nickname == ADMIN_NAME:
-        if password != ADMIN_PASS:
-            emit('login_failed', {'msg': '❌ كلمة سر المهندس غير صحيحة!'})
-            return
-        is_admin = True
-        display_name = f"👑 {nickname}"
-    else:
-        is_admin = False
-        display_name = nickname
+    # التحقق من المالك
+    is_admin = (name == ADMIN_NAME and password == ADMIN_PASS)
+    
+    # إضافة المستخدم
+    active_users[request.sid] = {
+        'name': name,
+        'is_admin': is_admin,
+        'role': 'مالك' if is_admin else 'عضو'
+    }
+    
+    # رسالة ترحيب ذكية
+    welcome_msg = f"دخل المالك {name}" if is_admin else f"دخل {name} بإشراف المهندس"
+    emit('status', {'msg': welcome_msg}, broadcast=True)
+    emit('user_list', active_users, broadcast=True)
 
-    avatar_url = f"https://i.pravatar.cc/100?img={random.randint(1, 70)}"
-    active_sessions[request.sid] = {"name": display_name, "avatar": avatar_url, "is_admin": is_admin}
-    
-    emit('status', {'msg': f'انضم {display_name} بإشراف المهندس.'}, broadcast=True)
-    emit('user_list', active_sessions, broadcast=True)
+@socketio.on('kick_user')
+def on_kick(data):
+    target_sid = data.get('target_sid')
+    # التحقق من صلاحية المالك فقط قبل الطرد
+    if active_users.get(request.sid, {}).get('is_admin'):
+        if target_sid in active_users:
+            emit('kicked', {'msg': 'تم طردك من قبل المالك'}, room=target_sid)
+            socketio.emit('status', {'msg': f'تم طرد {active_users[target_sid]["name"]}'}, broadcast=True)
+            disconnect(sid=target_sid)
 
 @socketio.on('text')
 def on_text(data):
-    if request.sid in active_sessions:
-        user_data = active_sessions[request.sid]
+    user = active_users.get(request.sid)
+    if user:
         emit('message', {
-            'sender': user_data['name'], 
-            'avatar': user_data['avatar'], 
+            'sender': user['name'],
+            'is_admin': user['is_admin'],
             'msg': data['msg']
         }, broadcast=True)
 
 @socketio.on('disconnect')
 def on_disconnect():
-    if request.sid in active_sessions:
-        nickname = active_sessions[request.sid]['name']
-        del active_sessions[request.sid]
-        emit('status', {'msg': f'غادر {nickname} الشات.'}, broadcast=True)
-        emit('user_list', active_sessions, broadcast=True)
+    if request.sid in active_users:
+        name = active_users[request.sid]['name']
+        del active_users[request.sid]
+        emit('status', {'msg': f'غادر {name} الشات.'}, broadcast=True)
+        emit('user_list', active_users, broadcast=True)
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=5000)
