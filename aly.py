@@ -1,77 +1,71 @@
- <!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شات المهندس</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <style>
-        body { margin: 0; font-family: sans-serif; background: #121212; color: white; height: 100vh; overflow: hidden; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1e1e2e, #0f0f1a); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
-        .box { background: #252535; padding: 25px; border-radius: 20px; text-align: center; width: 85%; max-width: 400px; border: 2px solid #0084ff; }
-        h1 { color: #0084ff; margin-bottom: 5px; }
-        p { color: #aaa; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: none; background: #333; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #0084ff; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
-        #chat-ui { display: none; height: 100%; flex-direction: column; }
-        #header { background: #1a1a1a; padding: 15px; text-align: center; border-bottom: 2px solid #0084ff; }
-        #messages { flex: 1; overflow-y: auto; padding: 15px; }
-        .system { color: #ffcc00; text-align: center; font-size: 0.8rem; margin: 5px 0; }
-        #input-area { padding: 10px; background: #1a1a1a; display: flex; }
-    </style>
-</head>
-<body>
+from flask import Flask, render_template, request
+from flask_socketio import SocketIO, emit
+import random
+import os
 
-    <div id="login-overlay">
-        <div class="box">
-            <h1>⚔ شـات المـهـندس ⚔</h1>
-            <p>أهلاً بك في عالم المهندس</p>
-            <input type="text" id="nickname" placeholder="أدخل اسمك المستعار">
-            <input type="password" id="password" placeholder="كلمة السر">
-            <button onclick="join()">دخول إلى الشات</button>
-        </div>
-    </div>
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'samy_king_final_2026'
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-    <div id="chat-ui">
-        <div id="header">
-            <h3>『 🛡️ شات المهندس - مكانك آمن 🛡️ 』</h3>
-        </div>
-        <div id="messages"></div>
-        <div id="input-area">
-            <input type="text" id="msg-input" placeholder="رسالتك...">
-            <button onclick="send()">إرسال</button>
-        </div>
-    </div>
+# قاعدة بيانات المستخدمين النشطين
+active_sessions = {}
 
-    <script>
-        const socket = io();
-        function join() {
-            const name = document.getElementById('nickname').value;
-            const pass = document.getElementById('password').value;
-            if(name && pass) {
-                socket.emit('check_join', {name, pass});
-            }
-        }
-        socket.on('login_failed', (d) => alert(d.msg));
-        socket.on('connect', () => {});
-        socket.on('status', (d) => {
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('chat-ui').style.display = 'flex';
-            const div = document.createElement('div');
-            div.className = 'system';
-            div.innerText = d.msg;
-            document.getElementById('messages').appendChild(div);
-        });
-        socket.on('message', (d) => {
-            const div = document.createElement('div');
-            div.innerHTML = `<b>${d.sender}:</b> ${d.msg}`;
-            document.getElementById('messages').appendChild(div);
-        });
-        function send() {
-            const m = document.getElementById('msg-input');
-            socket.emit('text', {msg: m.value});
-            m.value = '';
-        }
-    </script>
-</body>
-</html>
+# الإعدادات الخاصة بالمهندس (Admin)
+ADMIN_NAME = "المهندس"
+ADMIN_PASS = "Samy779h"
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@socketio.on('check_join')
+def on_check_join(data):
+    nickname = data.get('name', '').strip()
+    password = data.get('pass', '').strip()
+    
+    # التحقق من صلاحيات المهندس
+    if nickname == ADMIN_NAME:
+        if password != ADMIN_PASS:
+            emit('login_failed', {'msg': '❌ كلمة سر المهندس غير صحيحة!'})
+            return
+        is_admin = True
+        display_name = f"👑 {nickname}"
+    else:
+        is_admin = False
+        display_name = nickname
+
+    avatar_url = f"https://i.pravatar.cc/100?img={random.randint(1, 70)}"
+    active_sessions[request.sid] = {"name": display_name, "avatar": avatar_url, "is_admin": is_admin}
+    
+    emit('status', {'msg': f'انضم {display_name} بإشراف المهندس.'}, broadcast=True)
+    emit('user_list', active_sessions, broadcast=True)
+
+@socketio.on('text')
+def on_text(data):
+    if request.sid in active_sessions:
+        user_data = active_sessions[request.sid]
+        emit('message', {
+            'sender': user_data['name'], 
+            'avatar': user_data['avatar'], 
+            'msg': data['msg']
+        }, broadcast=True)
+
+@socketio.on('kick_user')
+def on_kick(data):
+    if active_sessions.get(request.sid, {}).get('is_admin'):
+        target_id = data['id']
+        if target_id in active_sessions:
+            emit('kicked', room=target_id)
+            emit('status', {'msg': f'🚫 قام المهندس بطرد أحد المستخدمين!'}, broadcast=True)
+
+@socketio.on('disconnect')
+def on_disconnect():
+    if request.sid in active_sessions:
+        nickname = active_sessions[request.sid]['name']
+        del active_sessions[request.sid]
+        emit('status', {'msg': f'غادر {nickname} الشات.'}, broadcast=True)
+        emit('user_list', active_sessions, broadcast=True)
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
