@@ -9,7 +9,7 @@
         body { margin: 0; font-family: sans-serif; background: #121212; color: white; height: 100vh; overflow: hidden; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1e1e2e, #0f0f1a); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
         .box { background: #252535; padding: 25px; border-radius: 20px; text-align: center; width: 85%; max-width: 400px; border: 2px solid #0084ff; }
-        h1 { color: #0084ff; margin-bottom: 5px; }
+        h1 { color: #0084ff; margin-bottom: 5px; font-size: 24px; }
         p { color: #aaa; margin-bottom: 20px; }
         input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: none; background: #333; color: white; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #0084ff; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
@@ -50,10 +50,11 @@
             const pass = document.getElementById('password').value;
             if(name && pass) {
                 socket.emit('check_join', {name, pass});
+            } else {
+                alert("يرجى إدخال الاسم وكلمة السر!");
             }
         }
         socket.on('login_failed', (d) => alert(d.msg));
-        socket.on('connect', () => {});
         socket.on('status', (d) => {
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('chat-ui').style.display = 'flex';
@@ -69,8 +70,10 @@
         });
         function send() {
             const m = document.getElementById('msg-input');
-            socket.emit('text', {msg: m.value});
-            m.value = '';
+            if(m.value.trim() !== "") {
+                socket.emit('text', {msg: m.value});
+                m.value = '';
+            }
         }
     </script>
 </body>
