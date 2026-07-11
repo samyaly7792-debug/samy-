@@ -78,3 +78,7 @@
     </script>
 </body>
 </html>
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'samy_king_final_2026'
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+socketio = SocketIO(app, cors_allowed_origins="*")
