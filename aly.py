@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit, disconnect
+from flask_socketio import SocketIO, emit
 import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'samy_king_final_2026'
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+# تم حذف async_mode='eventlet' لتجنب الخطأ
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 active_users = {}
 ADMIN_NAME = "المهندس"
@@ -38,4 +39,6 @@ def on_disconnect():
         emit('user_list', active_users, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app)
+    # إضافة المنفذ (port) ليتوافق مع Render
+    port = int(os.environ.get('PORT', 10000))
+    socketio.run(app, host='0.0.0.0', port=port)
