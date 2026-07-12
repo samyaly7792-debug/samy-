@@ -1,11 +1,9 @@
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit, disconnect
 import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'samy_king_final_2026'
-
-# تم حذف async_mode='eventlet' لتجنب الخطأ
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 active_users = {}
@@ -22,8 +20,6 @@ def on_join(data):
     password = data.get('pass', '')
     is_admin = (name == ADMIN_NAME and password == ADMIN_PASS)
     active_users[request.sid] = {'name': name, 'is_admin': is_admin}
-    emit('join_success', {'status': 'success'}, room=request.sid)
-    emit('status', {'msg': f"دخل {name}"}, broadcast=True)
     emit('user_list', active_users, broadcast=True)
 
 @socketio.on('text')
@@ -39,6 +35,5 @@ def on_disconnect():
         emit('user_list', active_users, broadcast=True)
 
 if __name__ == '__main__':
-    # إضافة المنفذ (port) ليتوافق مع Render
     port = int(os.environ.get('PORT', 10000))
     socketio.run(app, host='0.0.0.0', port=port)
