@@ -1,4 +1,4 @@
- flask_socketio import SocketIO, emit, disconnect
+flask_socketio import SocketIO, emit, disconnect
 import os
 
 app = Flask(__name__)
