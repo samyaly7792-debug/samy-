@@ -1,1 +1,1 @@
-web: gunicorn -k eventlet -w 1 aly:app
+web: python3 aly.py
