@@ -2,22 +2,31 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>دردشة المهندس</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شات المهندس</title>
+    <!-- مكتبة Socket.io -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; height: 90vh; padding: 10px; }
+        #chat { flex-grow: 1; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #f9f9f9; }
+        .controls { display: flex; gap: 5px; }
+        input { flex-grow: 1; padding: 10px; }
+        button { padding: 10px 20px; }
+    </style>
 </head>
 <body>
-    <div id="chat" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc;"></div>
-    <input id="msg" placeholder="اكتب رسالتك...">
-    <button onclick="send()">إرسال</button>
+    <h3>مرحباً بك في شات المهندس</h3>
+    <div id="chat"></div>
+    <div class="controls">
+        <input id="msg" placeholder="اكتب رسالتك...">
+        <button onclick="send()">إرسال</button>
+    </div>
 
     <script>
-        // الاتصال بالسيرفر تلقائياً عبر الرابط الحالي
-        const socket = io({transports: ['websocket']}); 
+        const socket = io(); // الاتصال التلقائي
         
         const name = prompt("ادخل اسمك:") || "زائر";
-        const pass = prompt("كلمة المرور (اختياري للمسؤول):") || "";
-        
-        socket.emit('join', {name: name, pass: pass});
+        socket.emit('join', {name: name});
 
         function send() {
             const msgInput = document.getElementById('msg');
@@ -30,6 +39,7 @@
         socket.on('message', (data) => {
             const chat = document.getElementById('chat');
             chat.innerHTML += `<p><b>${data.sender}:</b> ${data.msg}</p>`;
+            chat.scrollTop = chat.scrollHeight; // النزول لآخر رسالة تلقائياً
         });
     </script>
 </body>
