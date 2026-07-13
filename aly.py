@@ -1,5 +1,5 @@
-from flask import Flask, render_template
-from flask_socketio import SocketIO, emit, disconnect
+from flask import Flask, render_template, request # تم إضافة request هنا للحل
+from flask_socketio import SocketIO, emit
 import os
 
 app = Flask(__name__)
@@ -19,6 +19,7 @@ def on_join(data):
     name = data.get('name', 'زائر')
     password = data.get('pass', '')
     is_admin = (name == ADMIN_NAME and password == ADMIN_PASS)
+    # استخدام request.sid لمعرفة هوية المستخدم بدقة
     active_users[request.sid] = {'name': name, 'is_admin': is_admin}
     emit('user_list', active_users, broadcast=True)
 
