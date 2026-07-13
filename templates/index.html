@@ -2,41 +2,35 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تطبيق المهندس</title>
-    <style>
-        /* تثبيت طول الصفحة لتكون بطول الشاشة بالكامل */
-        body, html {
-            height: 100%;
-            margin: 0;
-            overflow: hidden; /* لمنع أي تمرير غير مرغوب فيه */
-            font-family: sans-serif;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh; /* استخدام كامل ارتفاع الشاشة */
-        }
-
-        /* تنسيق التاج الذهبي */
-        .header {
-            text-align: center;
-            padding: 10px;
-            font-size: 24px;
-        }
-    </style>
+    <title>دردشة المهندس</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
+    <div id="chat" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc;"></div>
+    <input id="msg" placeholder="اكتب رسالتك...">
+    <button onclick="send()">إرسال</button>
 
-    <div class="container">
-        <div class="header">
-            👑 </div>
+    <script>
+        // الاتصال بالسيرفر تلقائياً عبر الرابط الحالي
+        const socket = io({transports: ['websocket']}); 
         
-        <div class="content">
-            مرحباً بك في لوحة تحكم المهندس
-        </div>
-    </div>
+        const name = prompt("ادخل اسمك:") || "زائر";
+        const pass = prompt("كلمة المرور (اختياري للمسؤول):") || "";
+        
+        socket.emit('join', {name: name, pass: pass});
 
+        function send() {
+            const msgInput = document.getElementById('msg');
+            if(msgInput.value.trim() !== "") {
+                socket.emit('text', {msg: msgInput.value});
+                msgInput.value = '';
+            }
+        }
+
+        socket.on('message', (data) => {
+            const chat = document.getElementById('chat');
+            chat.innerHTML += `<p><b>${data.sender}:</b> ${data.msg}</p>`;
+        });
+    </script>
 </body>
 </html>
