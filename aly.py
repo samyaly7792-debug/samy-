@@ -3,13 +3,11 @@ from flask_socketio import SocketIO, emit
 import os
 
 app = Flask(__name__)
-# مفتاح تشفير قوي لضمان أمان الجلسات
-app.config['SECRET_KEY'] = 'samy_king_final_2026_secure'
+app.config['SECRET_KEY'] = 'samy_king_final_2026_stable'
 
-# إعداد SocketIO ليتوافق مع جميع بيئات الاستضافة السحابية
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode=None)
+# إعداد SocketIO بسيط بدون async_mode
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-# قاعدة بيانات مؤقتة للمستخدمين المتصلين
 active_users = {}
 ADMIN_NAME = "المهندس"
 ADMIN_PASS = "Samy779h"
@@ -21,19 +19,15 @@ def index():
 @socketio.on('join')
 def on_join(data):
     name = data.get('name', 'زائر')
-    password = data.get('pass', '')
-    # التحقق من صلاحيات المدير
-    is_admin = (name == ADMIN_NAME and password == ADMIN_PASS)
+    is_admin = (name == ADMIN_NAME and data.get('pass') == ADMIN_PASS)
     active_users[request.sid] = {'name': name, 'is_admin': is_admin}
-    
-    # إرسال قائمة المستخدمين المحدثة للجميع
-    emit('user_list', active_users, broadcast=True)
+    # إرسال تحديث للقائمة
+    emit('user_list', list(active_users.values()), broadcast=True)
 
 @socketio.on('text')
 def on_text(data):
     user = active_users.get(request.sid)
     if user:
-        # إرسال الرسالة مع اسم المرسل وحالة الإدارة
         emit('message', {
             'sender': user['name'], 
             'is_admin': user['is_admin'], 
@@ -44,9 +38,9 @@ def on_text(data):
 def on_disconnect():
     if request.sid in active_users:
         del active_users[request.sid]
-        emit('user_list', active_users, broadcast=True)
+        emit('user_list', list(active_users.values()), broadcast=True)
 
 if __name__ == '__main__':
-    # الحصول على المنفذ من النظام أو استخدام 10000 كقيمة افتراضية لـ Render
+    # التشغيل باستخدام المنفذ الصحيح
     port = int(os.environ.get('PORT', 10000))
     socketio.run(app, host='0.0.0.0', port=port)
