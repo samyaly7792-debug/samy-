@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>شات المهندس</title>
-    <!-- مكتبة Socket.io -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- تم تحديث رابط المكتبة للإصدار المستقر 4.7.2 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 10px; height: 95vh; display: flex; flex-direction: column; }
-        h3 { text-align: center; color: gold; }
+        h3 { text-align: center; color: gold; margin-top: 5px; }
         #chat { flex-grow: 1; border: 1px solid #444; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #000; border-radius: 8px; }
         .controls { display: flex; gap: 5px; }
         input { flex-grow: 1; padding: 12px; border-radius: 5px; border: none; }
@@ -26,9 +26,10 @@
     </div>
 
     <script>
+        // الاتصال بالسيرفر
         const socket = io(); 
         
-        // طلب الاسم وكلمة السر (إذا كنت تريد ميزة المدير)
+        // طلب الاسم وكلمة السر عند الدخول
         const name = prompt("أدخل اسمك:") || "زائر";
         const pass = prompt("أدخل كلمة السر (إذا كنت المدير):") || "";
         
@@ -42,10 +43,11 @@
             }
         }
 
+        // استقبال الرسائل من السيرفر
         socket.on('message', (data) => {
             const chat = document.getElementById('chat');
-            const isAdmin = data.is_admin ? 'admin-name' : '';
-            chat.innerHTML += `<div class="msg"><b class="${isAdmin}">${data.sender}:</b> ${data.msg}</div>`;
+            const adminClass = data.is_admin ? 'admin-name' : '';
+            chat.innerHTML += `<div class="msg"><b class="${adminClass}">${data.sender}:</b> ${data.msg}</div>`;
             chat.scrollTop = chat.scrollHeight;
         });
     </script>
