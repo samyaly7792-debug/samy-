@@ -27,7 +27,7 @@ def on_join(data):
         emit('message', {
             'sender': "النظام",
             'is_admin': False,
-            'msg': "يجب إدخال اسم للدخول!",
+            'msg': "❌ يجب إدخال اسم للدخول!",
             'color': "red"
         }, room=request.sid)
         return
@@ -54,7 +54,7 @@ def on_text(data):
             emit('message', {
                 'sender': "النظام",
                 'is_admin': False,
-                'msg': "لا يمكنك إرسال رسالة فارغة!",
+                'msg': "❌ لا يمكنك إرسال رسالة فارغة!",
                 'color': "red"
             }, room=request.sid)
             return
