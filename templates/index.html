@@ -15,6 +15,7 @@
         .msg { margin: 8px 0; padding: 5px; border-bottom: 1px solid #333; }
         .admin-msg { background: rgba(255, 215, 0, 0.2); border-left: 3px solid gold; }
         .admin-name { color: gold !important; font-weight: bold; text-shadow: 0 0 5px gold; }
+        .error-msg { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -29,8 +30,14 @@
         const socket = io();
 
         window.onload = function() {
-            const name = prompt("أدخل اسمك:") || "زائر";
-            const pass = prompt("أدخل كلمة السر (إذا كنت المدير):") || "";
+            const name = prompt("يجب إدخال اسمك للدخول إلى الشات:", "زائر");
+            if (!name) {
+                alert("يجب إدخال اسم للدخول!");
+                window.location.reload();
+                return;
+            }
+
+            const pass = prompt("أدخل كلمة السر (إذا كنت المدير):", "");
             socket.emit('join', {name: name, pass: pass});
         };
 
@@ -39,13 +46,15 @@
             if(msgInput.value.trim() !== "") {
                 socket.emit('text', {msg: msgInput.value});
                 msgInput.value = '';
+            } else {
+                alert("لا يمكنك إرسال رسالة فارغة!");
             }
         }
 
         socket.on('message', (data) => {
             const chat = document.getElementById('chat');
             const adminClass = data.is_admin ? 'admin-name' : '';
-            const msgClass = data.is_admin ? 'admin-msg' : '';
+            const msgClass = data.is_admin ? 'admin-msg' : data.color === "red" ? 'error-msg' : '';
             chat.innerHTML += `
                 <div class="msg ${msgClass}">
                     <b class="${adminClass}">${data.sender}:</b> ${data.msg}
