@@ -1,17 +1,11 @@
-from flask import Flask, render_template, request
+from flask import Flask, request
 from flask_socketio import SocketIO, emit
-import os
-import gevent
-from gevent import monkey
-
-# إصلاح التوافق مع gevent
-monkey.patch_all()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'samy_king_final_2026_stable'
 
-# إعداد SocketIO مع async_mode='gevent' (بديل أفضل لـ eventlet)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+# إعداد SocketIO بدون gevent أو eventlet
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # إعدادات الأدمن
 ADMIN_NAME = "المهندس"
@@ -23,7 +17,7 @@ active_users = {}
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return "الشات يعمل! افتح ملف index.html في المتصفح."
 
 @socketio.on('join')
 def on_join(data):
@@ -75,3 +69,6 @@ def on_disconnect():
     if request.sid in active_users:
         del active_users[request.sid]
         emit('user_list', list(active_users.values()), broadcast=True)
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False)
