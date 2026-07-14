@@ -22,22 +22,22 @@
     <h3>🛠️ شات المهندس 🛠️</h3>
     <div id="chat"></div>
     <div class="controls">
-        <input id="msg" placeholder="اكتب رسالتك هنا...">
-        <button onclick="send()">إرسال</button>
+        <input id="msg" placeholder="اكتب رسالتك هنا..." disabled>
+        <button onclick="send()" disabled>إرسال</button>
     </div>
 
     <script>
         const socket = io();
 
         window.onload = function() {
-            const name = prompt("يجب إدخال اسمك للدخول إلى الشات:", "زائر");
+            const name = prompt("🔹 يجب إدخال اسمك للدخول إلى الشات:", "زائر");
             if (!name) {
-                alert("يجب إدخال اسم للدخول!");
+                alert("❌ يجب إدخال اسم للدخول!");
                 window.location.reload();
                 return;
             }
 
-            const pass = prompt("أدخل كلمة السر (إذا كنت المدير):", "");
+            const pass = prompt("🔹 أدخل كلمة السر (إذا كنت المدير):", "");
             socket.emit('join', {name: name, pass: pass});
         };
 
@@ -47,7 +47,7 @@
                 socket.emit('text', {msg: msgInput.value});
                 msgInput.value = '';
             } else {
-                alert("لا يمكنك إرسال رسالة فارغة!");
+                alert("❌ لا يمكنك إرسال رسالة فارغة!");
             }
         }
 
@@ -61,10 +61,14 @@
                 </div>
             `;
             chat.scrollTop = chat.scrollHeight;
+
+            // تفعيل زر الإرسال بعد الدخول
+            document.querySelector('input').disabled = false;
+            document.querySelector('button').disabled = false;
         });
 
         socket.on('kicked', () => {
-            alert("تم طردك من الشات!");
+            alert("❌ تم طردك من الشات!");
             window.location.reload();
         });
     </script>
