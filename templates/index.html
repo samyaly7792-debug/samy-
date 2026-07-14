@@ -2,66 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>شات المهندس</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        body {
-            font-family: sans-serif;
-            background: #1a1a1a;
-            color: white;
-            margin: 0;
-            padding: 10px;
-            height: 95vh;
-            display: flex;
-            flex-direction: column;
-        }
-        h3 {
-            text-align: center;
-            color: gold;
-            margin-top: 5px;
-        }
-        #chat {
-            flex-grow: 1;
-            border: 1px solid #444;
-            overflow-y: scroll;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            border-radius: 8px;
-        }
-        .controls {
-            display: flex;
-            gap: 5px;
-        }
-        input {
-            flex-grow: 1;
-            padding: 12px;
-            border-radius: 5px;
-            border: none;
-        }
-        button {
-            padding: 10px 20px;
-            border-radius: 5px;
-            border: none;
-            background: #007bff;
-            color: white;
-            cursor: pointer;
-        }
-        .msg {
-            margin: 8px 0;
-            padding: 5px;
-            border-bottom: 1px solid #333;
-        }
-        .admin-msg {
-            background: rgba(255, 215, 0, 0.2);
-            border-left: 3px solid gold;
-        }
-        .admin-name {
-            color: gold !important;
-            font-weight: bold;
-            text-shadow: 0 0 5px gold;
-        }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 10px; height: 95vh; display: flex; flex-direction: column; }
+        h3 { text-align: center; color: gold; margin-top: 5px; }
+        #chat { flex-grow: 1; border: 1px solid #444; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #000; border-radius: 8px; }
+        .controls { display: flex; gap: 5px; }
+        input { flex-grow: 1; padding: 12px; border-radius: 5px; border: none; }
+        button { padding: 10px 20px; border-radius: 5px; border: none; background: #007bff; color: white; cursor: pointer; }
+        .msg { margin: 8px 0; padding: 5px; border-bottom: 1px solid #333; }
+        .admin-msg { background: rgba(255, 215, 0, 0.2); border-left: 3px solid gold; }
+        .admin-name { color: gold !important; font-weight: bold; text-shadow: 0 0 5px gold; }
     </style>
 </head>
 <body>
@@ -75,7 +28,6 @@
     <script>
         const socket = io();
 
-        // طلب الاسم وكلمة السر عند تحميل الصفحة
         window.onload = function() {
             const name = prompt("أدخل اسمك:") || "زائر";
             const pass = prompt("أدخل كلمة السر (إذا كنت المدير):") || "";
@@ -90,7 +42,6 @@
             }
         }
 
-        // استقبال الرسائل من السيرفر
         socket.on('message', (data) => {
             const chat = document.getElementById('chat');
             const adminClass = data.is_admin ? 'admin-name' : '';
@@ -103,7 +54,6 @@
             chat.scrollTop = chat.scrollHeight;
         });
 
-        // استقبال رسالة طرد
         socket.on('kicked', () => {
             alert("تم طردك من الشات!");
             window.location.reload();
