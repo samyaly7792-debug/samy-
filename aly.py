@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
@@ -17,7 +17,7 @@ active_users = {}
 
 @app.route('/')
 def index():
-    return "الشات يعمل! افتح ملف index.html في المتصفح."
+    return render_template('index.html')  # عرض صفحة index.html مباشرة
 
 @socketio.on('join')
 def on_join(data):
