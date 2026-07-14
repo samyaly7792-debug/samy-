@@ -1,12 +1,17 @@
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 import os
+import gevent
+from gevent import monkey
+
+# إصلاح التوافق مع gevent
+monkey.patch_all()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'samy_king_final_2026_stable'
 
-# إعداد SocketIO مع async_mode='eventlet' (مطلوب لـ Render)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+# إعداد SocketIO مع async_mode='gevent' (بديل أفضل لـ eventlet)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # إعدادات الأدمن
 ADMIN_NAME = "المهندس"
