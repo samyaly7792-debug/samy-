@@ -4,10 +4,8 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'samy_king_final_2026_stable'
 
-# إعداد SocketIO بدون gevent أو eventlet
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# إعدادات الأدمن
 ADMIN_NAME = "المهندس"
 ADMIN_PASS = "Samy779h"
 ADMIN_COLOR = "gold"
@@ -17,12 +15,24 @@ active_users = {}
 
 @app.route('/')
 def index():
-    return render_template('index.html')  # عرض صفحة index.html مباشرة
+    return render_template('index.html')
 
 @socketio.on('join')
 def on_join(data):
-    name = data.get('name', 'زائر')
-    is_admin = (name == ADMIN_NAME and data.get('pass') == ADMIN_PASS)
+    name = data.get('name', '').strip()
+    passwd = data.get('pass', '').strip()
+
+    # منع الدخول بدون اسم
+    if not name:
+        emit('message', {
+            'sender': "النظام",
+            'is_admin': False,
+            'msg': "يجب إدخال اسم للدخول!",
+            'color': "red"
+        }, room=request.sid)
+        return
+
+    is_admin = (name == ADMIN_NAME and passwd == ADMIN_PASS)
 
     if is_admin:
         emit('message', {
@@ -40,7 +50,13 @@ def on_text(data):
     user = active_users.get(request.sid)
     if user:
         msg = data.get('msg', '').strip()
-        if not msg:
+        if not msg:  # منع إرسال رسائل فارغة
+            emit('message', {
+                'sender': "النظام",
+                'is_admin': False,
+                'msg': "لا يمكنك إرسال رسالة فارغة!",
+                'color': "red"
+            }, room=request.sid)
             return
 
         if user['is_admin']:
