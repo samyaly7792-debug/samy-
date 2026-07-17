@@ -3,13 +3,13 @@ from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit, disconnect
 
 app = Flask(__name__)
-# مفتاح أمان لتشفير الجلسات (يمكنك تغييره لأي نص تريده)
+# مفتاح أمان لتشفير الجلسات
 app.config['SECRET_KEY'] = 'samy_king_secret_key_779'
 
-# إعداد مكتبة السوكت مع تفعيل الـ CORS لتجنب أي مشاكل اتصال على سيرفر Render
-socketio = SocketIO(app, cors_allowed_origins="*")
+# إضافة خيار التوافق لتفعيل الاتصال المتدرج والتوافق الكامل مع gevent
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent', ping_timeout=60, ping_interval=25)
 
-# قاموس ذكي لحفظ المستخدمين المتصلين حالياً داخل سيرفر السحابي (مفتاح: SID، قيمة: بيانات المستخدم)
+# قاموس ذكي لحفظ المستخدمين المتصلين حالياً داخل السيرفر السحابي
 connected_users = {}
 
 @app.route('/')
