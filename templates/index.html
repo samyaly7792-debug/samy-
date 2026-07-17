@@ -204,9 +204,9 @@
     </div>
 
     <script>
-        // ضبط إعدادات الاتصال بدقة للعمل بمرونة وسرعة على سيرفر Render
+        // هنا تم تعديل الترتيب ليقوم بالـ polling أولاً ثم الترقية لـ websocket لحل تعليق الجوالات
         const socket = io({
-            transports: ['websocket', 'polling']
+            transports: ['polling', 'websocket']
         });
 
         let currentUser = "";
