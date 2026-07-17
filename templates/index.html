@@ -2,7 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="meta" content="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- إصلاح منع التقريب والتبعيد نهائياً ليصبح كالتطبيق تماماً -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>👑 شات المهندس 👑</title>
     <!-- استدعاء مكتبة السوكت لتوصيل الشات فورياً -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
@@ -12,6 +13,8 @@
             margin: 0;
             padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* منع تحديد النصوص أو ظهور التكبير باللمس المتكرر */
+            touch-action: manipulation;
         }
         body {
             background-color: #0b0f19;
@@ -21,6 +24,9 @@
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            /* منع السحب والاهتزاز في الهواتف */
+            position: fixed;
+            width: 100%;
         }
         /* واجهة الدخول */
         #login-screen {
@@ -81,6 +87,9 @@
             height: 100vh;
             flex-direction: column;
             background: #0f172a;
+            position: fixed;
+            top: 0;
+            left: 0;
         }
         header {
             background: #1e293b;
@@ -195,7 +204,11 @@
     </div>
 
     <script>
-        const socket = io();
+        // ضبط إعدادات الاتصال بدقة للعمل بمرونة وسرعة على سيرفر Render
+        const socket = io({
+            transports: ['websocket', 'polling']
+        });
+
         let currentUser = "";
         let isAdmin = false;
 
@@ -214,11 +227,16 @@
         function login() {
             const username = document.getElementById("username-input").value.trim();
             const password = document.getElementById("password-input").value.trim();
+            const loginBtn = document.getElementById("login-btn");
 
             if (!username) {
                 alert("الرجاء إدخال اسم مستعار!");
                 return;
             }
+
+            // إظهار حالة جاري الدخول للتحقق
+            loginBtn.innerText = "جاري الدخول...";
+            loginBtn.disabled = true;
 
             // التحقق من هوية المالك
             if (username === "المهندس") {
@@ -226,6 +244,8 @@
                     isAdmin = true;
                 } else {
                     alert("كلمة سر المالك غير صحيحة!");
+                    loginBtn.innerText = "دخول الغرفة";
+                    loginBtn.disabled = false;
                     return;
                 }
             } else {
@@ -238,6 +258,10 @@
 
             showChat();
             socket.emit('user_join', {username: currentUser, isAdmin: isAdmin});
+            
+            // إرجاع حالة الزر لطبيعتها
+            loginBtn.innerText = "دخول الغرفة";
+            loginBtn.disabled = false;
         }
 
         function showChat() {
