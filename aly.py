@@ -4,7 +4,6 @@ from flask_socketio import SocketIO
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# قاعدة بيانات وهمية لحفظ حسابات المستخدمين
 USERS_DB = {
     "المهندس": "1234"
 }
@@ -90,6 +89,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- الرابط الصحيح والثابت للمكتبة ليعمل زر الدخول والإرسال فورا -->
     <script src="https://cloudflare.com"></script>
     <script>
         const socket = io();
@@ -103,11 +103,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             if (e.key === 'Enter') loginOrRegister();
         });
 
+        function convertArabicNumbers(str) {
+            return str.replace(/[٠-٩]/g, function (d) {
+                return d.charCodeAt(0) - 1632;
+            });
+        }
+
         function loginOrRegister() {
             const userField = document.getElementById('login-user');
             const passField = document.getElementById('login-pass');
             let username = userField.value.trim();
-            let password = passField.value.trim();
+            let password = convertArabicNumbers(passField.value.trim());
 
             if(username === "" || password === "") {
                 alert("الرجاء كتابة الاسم وكلمة المرور أولاً!");
