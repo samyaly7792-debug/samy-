@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request
+flask import Flask, render_template_string, request
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
@@ -53,5 +53,4 @@ def handle_message(data):
     # إعادة إرسال الرسالة لجميع المتصلين
     socketio.emit('message', data)
 
-if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000)
+if __name__ == '__main__
