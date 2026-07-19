@@ -1,13 +1,12 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, request
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# قاعدة بيانات وهمية في الذاكرة لحفظ حسابات المستخدمين المسجلين أثناء تشغيل السيرفر
+# قاعدة بيانات وهمية لحفظ حسابات المستخدمين
 USERS_DB = {
-    # الحساب الرسمي الخاص بك (يمكنك تغيير كلمة السر من هنا)
-    "المهندس": "1234" 
+    "المهندس": "1234"
 }
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -20,7 +19,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; background: #0f172a; color: #e2e8f0; font-family: sans-serif; overflow: hidden; }
         
-        /* شاشة تسجيل الدخول */
         #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 20px; background: #0f172a; }
         .login-card { background: #1e293b; padding: 30px 25px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
         .login-card h1 { color: #FFD700; margin-bottom: 20px; font-size: 1.6rem; text-shadow: 0 0 10px rgba(255,215,0,0.2); }
@@ -29,7 +27,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .login-card button:hover { background: #0369a1; }
         #login-error { color: #ef4444; font-size: 0.9rem; margin-top: 10px; display: none; }
 
-        /* حاوية الشات الرئيسية (مخفية في البداية) */
         #chat-screen { display: none; flex-direction: column; height: 100%; }
         
         #header { background: #1e293b; padding: 15px; text-align: center; border-bottom: 2px solid #334155; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
@@ -38,7 +35,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         
         #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         
-        /* فقاعات الرسائل */
         .msg-box { padding: 10px 14px; border-radius: 12px; max-width: 80%; font-size: 0.95rem; line-height: 1.4; word-break: break-word; animation: fadeIn 0.2s ease-out; }
         .msg-normal { background: #1e293b; align-self: flex-start; border-top-right-radius: 2px; }
         .msg-owner { background: linear-gradient(135deg, #1e293b 0%, #2e2612 100%); border: 1px solid #FFD700; align-self: flex-start; border-top-right-radius: 2px; }
@@ -46,7 +42,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .owner-gold { color: #FFD700; font-weight: bold; text-shadow: 0 0 5px #FFD700; }
         .user-name { color: #38bdf8; font-weight: bold; }
         
-        /* منطقة الإدخال السفلية المنظمة ومنع التلخبط */
         #interactive-area { background: #1e293b; border-top: 2px solid #334155; flex-shrink: 0; }
         #emoji-bar { padding: 8px 12px; display: flex; gap: 14px; background: #111827; overflow-x: auto; font-size: 1.2rem; border-bottom: 1px solid #334155; }
         .emoji-btn { cursor: pointer; user-select: none; }
@@ -60,7 +55,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 
-    <!-- الواجهة الأولى: شاشة الدخول والتسجيل -->
     <div id="login-screen">
         <div class="login-card">
             <h1>👑 تسجيل دخول الشات </h1>
@@ -71,10 +65,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- الواجهة الثانية: شاشة غرف الشات بعد التحقق -->
     <div id="chat-screen">
         <div id="header">
-            <div style="width:60px;"></div> <!-- توازن مظهر الهيدر -->
+            <div style="width:60px;"></div>
             <h2>👑 شات المهندس 👑</h2>
             <div class="user-tag" id="my-display-name">...</div>
         </div>
@@ -102,16 +95,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const socket = io();
         let currentUsername = "";
 
-        // تفعيل الإرسال بالإنتر
         document.getElementById('msg').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') send();
+        });
+
+        document.getElementById('login-pass').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') loginOrRegister();
         });
 
         function loginOrRegister() {
             const userField = document.getElementById('login-user');
             const passField = document.getElementById('login-pass');
-            const errorDiv = document.getElementById('login-error');
-
             let username = userField.value.trim();
             let password = passField.value.trim();
 
@@ -119,23 +113,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 alert("الرجاء كتابة الاسم وكلمة المرور أولاً!");
                 return;
             }
-
-            // إرسال طلب فحص الحساب أو تسجيله إلى السيرفر
             socket.emit('verify_login', { username: username, password: password });
         }
 
-        // استقبال الرد من السيرفر بخصوص نجاح أو فشل تسجيل الدخول
         socket.on('login_response', function(data) {
             const errorDiv = document.getElementById('login-error');
             if(data.success) {
                 currentUsername = data.username;
                 document.getElementById('my-display-name').textContent = currentUsername;
-                
-                // إخفاء شاشة التسجيل وإظهار الشات المطور المنظم
                 document.getElementById('login-screen').style.display = "none";
                 document.getElementById('chat-screen').style.display = "flex";
-                
-                // تحديث الارتفاع وإعادة التركيز
                 document.getElementById('msg').focus();
             } else {
                 errorDiv.textContent = data.message;
@@ -152,9 +139,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         function send() {
             let msgInput = document.getElementById('msg');
             let msg = msgInput.value.trim();
-            
             if (msg === '' || currentUsername === '') return;
-            
             socket.emit('message', {username: currentUsername, msg: msg});
             msgInput.value = '';
             msgInput.focus();
@@ -163,7 +148,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         socket.on('message', function(data) {
             let chat = document.getElementById('chat-window');
             let div = document.createElement('div');
-            
             if(data.is_owner) {
                 div.className = "msg-box msg-owner";
                 div.innerHTML = "<span class='owner-gold'>👑 " + data.username + ":</span> <span style='color: #fff;'>" + data.msg + "</span>";
@@ -171,7 +155,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 div.className = "msg-box msg-normal";
                 div.innerHTML = "<span class='user-name'>" + data.username + ":</span> <span style='color: #e2e8f0;'>" + data.msg + "</span>";
             }
-            
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
         });
@@ -188,14 +171,25 @@ def handle_login(data):
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
     
-    # حماية رتبة المالك (منع أي شخص من الدخول باسم المهندس بكلمة سر مختلفة)
     if username == "المهندس" and password != USERS_DB["المهندس"]:
         socketio.emit('login_response', {'success': False, 'message': 'عذراً، كلمة مرور المالك غير صحيحة!'}, room=request.sid)
         return
         
-    # إذا كان اسم جديد بالكامل، يتم تسجيله وحفظه تلقائياً بكلمة السر المدخلة
     if username not in USERS_DB:
         USERS_DB[username] = password
         
-    # التحقق من صحة كلمة المرور للمستخدمين الآخرين المسجلين
     if USERS_DB[username] == password:
+        socketio.emit('login_response', {'success': True, 'username': username}, room=request.sid)
+    else:
+        socketio.emit('login_response', {'success': False, 'message': 'اسم المستخدم مسجل بكلمة مرور أخرى!'}, room=request.sid)
+
+@socketio.on('message')
+def handle_message(data):
+    if data.get('username') == "المهندس":
+        data['is_owner'] = True
+    else:
+        data['is_owner'] = False
+    socketio.emit('message', data)
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000)
