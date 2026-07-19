@@ -2,10 +2,9 @@ from flask import Flask, render_template_string, request
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
-# إعداد السيرفر مع السماح بجميع الأصول والاتصالات المتعددة عبر gevent
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# قاعدة بيانات في الذاكرة لحفظ حسابات المستخدمين
+# قاعدة بيانات وهمية لحفظ الحسابات
 USERS_DB = {
     "المهندس": "1234"
 }
@@ -56,7 +55,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 
-    <!-- واجهة الدخول والتسجيل -->
+    <!-- شاشة الدخول والتسجيل -->
     <div id="login-screen">
         <div class="login-card">
             <h1>👑 تسجيل دخول الشات </h1>
@@ -67,7 +66,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- واجهة الشات بعد نجاح التحقق -->
+    <!-- شاشة الشات الرئيسية -->
     <div id="chat-screen">
         <div id="header">
             <div style="width:60px;"></div>
@@ -95,7 +94,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <script src="https://cloudflare.com"></script>
     <script>
-        // إجبار الاتصال على استخدام نظام التشفير المتوافق مع استضافة Render (wss)
+        // تفعيل الاتصال الموثق والآمن لحل مشكلة توقف الأزرار على ريندر
         const socket = io({
             transports: ['websocket', 'polling'],
             secure: true,
@@ -103,15 +102,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         });
 
         let currentUsername = "";
-
-        // فحص الاتصال للتأكد من ربط الشات بالسيرفر بنجاح
-        socket.on('connect', () => {
-            console.log('تم الاتصال الآمن بالسيرفر بنجاح!');
-        });
-
-        socket.on('connect_error', (error) => {
-            alert('فشل الاتصال بالسيرفر! يرجى إعادة تحديث الصفحة.');
-        });
 
         document.getElementById('msg').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') send();
@@ -137,8 +127,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 alert("الرجاء كتابة الاسم وكلمة المرور أولاً!");
                 return;
             }
-            
-            // إرسال البيانات فوراً عبر الاتصال المؤمن المحدث
             socket.emit('verify_login', { username: username, password: password });
         }
 
@@ -200,8 +188,21 @@ def handle_login(data):
     if username == "المهندس" and password != USERS_DB["المهندس"]:
         socketio.emit('login_response', {'success': False, 'message': 'عذراً، كلمة مرور المالك غير صحيحة!'}, room=request.sid)
         return
-        
+
     if username not in USERS_DB:
         USERS_DB[username] = password
-        
+
     if USERS_DB[username] == password:
+        socketio.emit('login_response', {'success': True, 'username': username}, room=request.sid)
+    else:
+        socketio.emit('login_response', {'success': False, 'message': 'اسم المستخدم مسجل بكلمة مرور أخرى!'}, room=request.sid)
+
+@socketio.on('message')
+def handle_message(data):
+    if data.get('username') == "المهندس":
+        data['is_owner'] = True
+    else:
+        data['is_owner'] = False
+    socketio.emit('message', data)
+
+if __name__ == '__main__':
