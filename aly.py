@@ -1,44 +1,34 @@
-# استيراد مكتبات التوافق (Monkey Patching) لضمان عمل gevent مع SocketIO
-from gevent import monkey
-monkey.patch_all()
-
-import os
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit, disconnect
+from flask_socketio import SocketIO, emit, join_room
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'samy_king_secret_key_779'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# تفعيل CORS والاتصال المتوافق مع المتصفحات
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent', ping_timeout=60, ping_interval=25)
-
-connected_users = {}
+# كلمة السر الخاصة بك
+OWNER_PASS = "samy779h"
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# دالة التعامل مع انضمام المستخدم (تنتظر حتى يتم استدعاؤها من الزر)
-@socketio.on('user_join')
-def handle_user_join(data):
-    username = data.get('username')
-    is_admin = data.get('isAdmin', False)
+@socketio.on('join')
+def on_join(data):
+    username = data['username']
+    password = data.get('password', '')
     
-    if username == "المهندس" and not is_admin:
-        is_admin = True
+    # التحقق من أنك المالك
+    is_owner = (username == "المهندس" and password == OWNER_PASS)
+    
+    join_room("main_chat")
+    message = f"دخل {username} إلى الدردشة"
+    if is_owner:
+        message = "👑 دخل المالك المهندس إلى الدردشة 👑"
         
-    connected_users[request.sid] = {'username': username, 'isAdmin': is_admin}
-    print(f"👤 انضمام: {username}")
+    emit('status', {'msg': message, 'is_owner': is_owner}, room="main_chat")
 
-@socketio.on('new_message')
-def handle_new_message(data):
-    emit('message_received', data, broadcast=True)
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    connected_users.pop(request.sid, None)
+@socketio.on('message')
+def handle_message(data):
+    emit('message', data, room="main_chat")
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    # تشغيل السيرفر باستخدام واجهة gevent المناسبة للمنصات السحابية
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=5000)
