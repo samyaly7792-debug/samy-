@@ -1,454 +1,694 @@
 <!doctype html>
-<!-- templates/index.html -->
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>شات المهندس</title>
   <style>
-    :root {
-      --bg: #f6f7fb;
-      --panel: #ffffff;
-      --accent: #0b5ed7;
-      --muted: #6c757d;
-      --owner-gold: #d4af37;
-      --owner-bg: linear-gradient(90deg,#fff7e6,#fff3d1);
+    /* Reset */
+    * { box-sizing: border-box; margin:0; padding:0; }
+    html,body { height:100%; }
+    body {
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background:#000; /* أسود كامل */
+      color:#fff;
+      direction: rtl;
     }
-    html,body { height:100%; margin:0; font-family: "Segoe UI", Tahoma, Arial, sans-serif; background:var(--bg); color:#111827; }
-    .app { max-width:980px; margin:20px auto; background:var(--panel); border-radius:10px; box-shadow:0 8px 24px rgba(15,23,42,0.08); overflow:hidden; display:flex; flex-direction:column; min-height:82vh; }
-    header { padding:16px 20px; border-bottom:1px solid #eef2ff; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(90deg,#ffffff,#f8fbff); }
-    header h1 { margin:0; font-size:20px; color:var(--accent); }
-    .status { font-size:13px; color:var(--muted); }
-    .content { display:flex; flex:1; min-height:0; }
-    .sidebar { width:260px; border-left:1px solid #f1f5f9; padding:14px; background:#fbfdff; box-sizing:border-box; }
-    .main { flex:1; display:flex; flex-direction:column; padding:14px; min-height:0; }
-    .room-list, .participants { list-style:none; padding:0; margin:0; }
-    .room-list li, .participants li { padding:8px 10px; border-radius:6px; margin-bottom:6px; cursor:pointer; color:#0f1724; display:flex; justify-content:space-between; align-items:center; }
-    .room-list li.active { background:rgba(11,94,215,0.08); color:var(--accent); font-weight:600; }
-    .participants li.owner { font-weight:700; color:var(--owner-gold); background:var(--owner-bg); }
-    .messages { flex:1; overflow:auto; padding:8px; display:flex; flex-direction:column-reverse; gap:8px; }
-    .message { max-width:75%; padding:10px 12px; border-radius:10px; background:#eef2ff; color:#042a56; align-self:flex-start; box-shadow:0 1px 2px rgba(2,6,23,0.04); }
-    .message.me { background:#d1e7dd; color:#0f5132; align-self:flex-end; }
-    .message .meta { font-size:12px; color:var(--muted); margin-bottom:6px; }
-    .message.owner { border:1px solid rgba(212,175,55,0.2); background:linear-gradient(90deg,#fff8e6,#fff5d1); color:#543e00; }
-    .message .username-owner { color:var(--owner-gold); font-weight:800; margin-left:6px; }
-    .system { text-align:center; color:var(--muted); font-size:13px; margin:6px 0; }
-    .compose { display:flex; gap:8px; padding-top:10px; border-top:1px solid #f1f5f9; }
-    .compose input[type="text"], .compose input[type="password"] { flex:1; padding:10px 12px; border-radius:8px; border:1px solid #e6edf8; font-size:15px; }
-    .compose button { background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; }
-    .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(4,6,15,0.35); z-index:50; }
-    .card { width:420px; background:white; border-radius:10px; padding:18px; box-shadow:0 10px 40px rgba(2,6,23,0.18); }
-    .card h2 { margin:0 0 12px 0; font-size:18px; color:#042a56; }
-    .form-row { margin-bottom:10px; }
-    .form-row label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
-    .form-row input { width:100%; padding:9px 12px; border-radius:8px; border:1px solid #e6edf8; font-size:14px; }
-    .tiny { font-size:12px; color:var(--muted); margin-top:8px; }
-    footer { padding:10px 14px; font-size:13px; color:var(--muted); text-align:center; border-top:1px solid #f1f5f9; }
-    .badge { padding:4px 8px; border-radius:999px; background:#f1f5f9; font-weight:600; color:#0b5ed7; font-size:12px; }
-    @media (max-width:900px) { .sidebar { display:none; } .card { width:92%; } }
+
+    /* Login page (ثابتة) */
+    .login-page {
+      position: fixed;
+      inset: 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.85));
+      z-index: 100;
+    }
+    .login-card {
+      width: 420px;
+      background: rgba(10,10,10,0.95);
+      border: 1px solid rgba(255,215,0,0.08);
+      padding: 28px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .gold-title {
+      color: #dfb632; /* ذهبي */
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 8px rgba(223,182,50,0.12);
+    }
+    .subtitle {
+      color: #f3e7b0;
+      opacity: 0.9;
+      margin-bottom: 20px;
+    }
+    .form-row { margin-bottom: 12px; text-align: right; }
+    .form-row label { display:block; margin-bottom:6px; color:#ddd; text-align:right; font-size:14px; }
+    .form-row input {
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+      color:#fff;
+      font-size:15px;
+    }
+    .btn {
+      display:inline-block;
+      padding:10px 16px;
+      border-radius:10px;
+      background: linear-gradient(90deg,#dfb632,#f6d86b);
+      color:#111;
+      font-weight:800;
+      cursor:pointer;
+      border:none;
+      margin-top:8px;
+      box-shadow: 0 6px 20px rgba(223,182,50,0.12);
+    }
+
+    /* Main chat layout */
+    .app {
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+      align-items:stretch;
+    }
+    header {
+      padding:18px 12px;
+      text-align:center;
+      border-bottom:1px solid rgba(255,255,255,0.04);
+      background: linear-gradient(90deg, rgba(0,0,0,0.6), rgba(0,0,0,0.8));
+    }
+    header h1 {
+      color:#dfb632;
+      font-size:24px;
+      font-weight:900;
+      margin:0;
+      text-shadow:0 2px 6px rgba(0,0,0,0.6);
+    }
+
+    .content {
+      flex:1;
+      display:flex;
+      gap:12px;
+      padding:14px;
+      align-items:stretch;
+    }
+
+    /* Messages column */
+    .chat-col {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      height: calc(100vh - 140px);
+      border:1px solid rgba(255,255,255,0.03);
+      border-radius:10px;
+      overflow:hidden;
+      background: rgba(0,0,0,0.45);
+    }
+
+    .messages {
+      flex:1;
+      overflow:auto;
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .msg {
+      max-width:75%;
+      padding:10px 14px;
+      border-radius:8px;
+      background: rgba(255,255,255,0.03);
+      color:#fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      align-self:flex-start;
+      word-break: break-word;
+    }
+    .msg.me { align-self:flex-end; background: rgba(255,255,255,0.06); color:#fff; }
+    .msg .msg-user {
+      font-weight:800;
+      margin-bottom:6px;
+      color: #f1f1f1;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .msg .msg-user .owner {
+      color: #dfb632;
+      font-weight:900;
+    }
+    .msg .msg-time {
+      font-size:12px;
+      color: #bfbfbf;
+      margin-top:8px;
+      text-align:left;
+    }
+    .msg .quote {
+      margin-bottom:8px;
+      padding:8px;
+      border-left: 3px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.02);
+      font-size:13px;
+      color:#eaeaea;
+    }
+    .system {
+      text-align:center;
+      color:#bfbfbf;
+      font-size:13px;
+      opacity:0.95;
+    }
+
+    /* Right column (participants/settings) */
+    .side-col {
+      width:300px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .panel {
+      background: rgba(255,255,255,0.02);
+      border-radius:10px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .participants-list {
+      max-height:300px;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .participant {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:8px;
+      border-radius:8px;
+      background: transparent;
+      color:#f1f1f1;
+    }
+    .participant .name { font-weight:700; }
+    .participant .owner { color:#dfb632; font-weight:900; }
+
+    /* Composer */
+    .composer {
+      display:flex;
+      gap:8px;
+      padding:12px;
+      border-top:1px solid rgba(255,255,255,0.03);
+      align-items:center;
+      background: rgba(0,0,0,0.5);
+    }
+    .composer .input {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .composer input[type="text"] {
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.02);
+      color:#fff;
+      font-size:15px;
+    }
+    .composer .buttons { display:flex; gap:6px; align-items:center; }
+    .icon-btn {
+      background: rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.04);
+      color:#fff;
+      padding:8px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    /* Reply indicator */
+    .reply-indicator {
+      background: rgba(255,255,255,0.02);
+      padding:8px;
+      border-left:3px solid rgba(255,255,255,0.06);
+      border-radius:6px;
+      font-size:13px;
+      color:#f1f1f1;
+    }
+
+    /* Emoji bar */
+    .emoji-bar {
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .emoji-btn {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size:18px;
+      cursor:pointer;
+    }
+
+    /* file preview link */
+    .file-link { color:#dcdcdc; text-decoration:underline; cursor:pointer; }
+
+    /* settings */
+    .settings input[type="color"] { width:48px; height:34px; border:none; background:transparent; }
+
+    /* responsive */
+    @media (max-width: 900px) {
+      .side-col { display:none; }
+      .msg { max-width: 92%; }
+      .login-card { width:92%; }
+    }
   </style>
 </head>
 <body>
-  <div class="app" role="application" aria-label="شات المهندس">
-    <header>
-      <h1>شات المهندس</h1>
-      <div class="status">
-        الحالة:
-        <span id="connStatus" class="badge">غير متصل</span>
-        <span id="latency" style="margin-left:10px;color:var(--muted);"></span>
+  <!-- Login (ثابتة) -->
+  <div class="login-page" id="loginPage">
+    <div class="login-card" role="dialog" aria-modal="true">
+      <div class="gold-title">شات المهندس</div>
+      <div class="subtitle">مرحباً بكم في عالم المهندس</div>
+
+      <div class="form-row">
+        <label for="login-username">اسم المستخدم</label>
+        <input id="login-username" type="text" autocomplete="username" placeholder="اسم المستخدم..." />
       </div>
-    </header>
+
+      <div class="form-row">
+        <label for="login-password">كلمة السر</label>
+        <input id="login-password" type="password" autocomplete="current-password" placeholder="كلمة السر..." />
+      </div>
+
+      <div>
+        <button class="btn" id="loginBtn">دخول</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div class="app" id="app" style="display:none;">
+    <header><h1>شات المهندس</h1></header>
 
     <div class="content">
-      <div class="main" role="main">
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
-          <div style="flex:1;font-size:14px;color:var(--muted);">الغرفة: <strong id="currentRoom">main</strong></div>
-          <div style="font-size:13px;color:var(--muted);">المستخدم: <strong id="currentUser">غير مسجل</strong></div>
+      <div class="chat-col">
+        <div class="messages" id="messages"></div>
+
+        <!-- composer -->
+        <div class="composer">
+          <div class="input">
+            <div id="replyBox" style="display:none;" class="reply-indicator">
+              <span id="replyText"></span>
+              <button id="cancelReply" class="icon-btn" title="إلغاء الرد">✖</button>
+            </div>
+            <input id="messageInput" type="text" placeholder="اكتب رسالة..." />
+            <div class="emoji-bar" id="emojiBar" aria-hidden="false">
+              <!-- quick emojis -->
+              <button class="emoji-btn">😀</button>
+              <button class="emoji-btn">😂</button>
+              <button class="emoji-btn">😍</button>
+              <button class="emoji-btn">👍</button>
+              <button class="emoji-btn">🔥</button>
+              <button class="emoji-btn">🎉</button>
+            </div>
+          </div>
+
+          <div class="buttons">
+            <input type="file" id="fileInput" style="display:none;" />
+            <button class="icon-btn" id="attachBtn" title="إرفاق ملف/صورة">📎</button>
+            <button class="icon-btn" id="replyBtn" title="اقتَباس/رد">↩</button>
+            <button class="btn" id="sendBtn">إرسال</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-col">
+        <div class="panel">
+          <h3 style="margin-bottom:8px;">المتواجدون الآن</h3>
+          <div class="participants-list" id="participants"></div>
         </div>
 
-        <div id="messagesContainer" class="messages" aria-live="polite" aria-relevant="additions"></div>
-
-        <div class="compose" role="region" aria-label="منطقة كتابة الرسائل">
-          <input id="messageInput" type="text" placeholder="اكتب رسالتك..." autocomplete="off" />
-          <button id="sendBtn">إرسال</button>
+        <div class="panel">
+          <h3 style="margin-bottom:8px;">الإعدادات</h3>
+          <div style="margin-bottom:8px;">
+            <label style="display:block;margin-bottom:6px;color:#ddd;">تغيير الاسم</label>
+            <input id="settingName" type="text" placeholder="اسم العرض" />
+            <button class="btn" id="saveName" style="margin-top:8px;">حفظ الاسم</button>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;color:#ddd;">خلفيتي (لون)</label>
+            <input id="bgColor" type="color" value="#000000" />
+            <button class="btn" id="saveBg" style="margin-top:8px;">حفظ الخلفية</button>
+          </div>
         </div>
-
-        <div class="tiny" id="queueInfo" style="display:none;">يوجد رسائل في الطابور سيتم إرسالها عند استعادة الاتصال.</div>
       </div>
-
-      <aside class="sidebar" aria-label="قائمة الغرف والمشاركين">
-        <div style="font-weight:700;margin-bottom:8px;">غرف متاحة</div>
-        <ul class="room-list" id="rooms">
-          <li data-room="main" class="active">عام</li>
-          <li data-room="support">دعم</li>
-          <li data-room="projects">مشروعات</li>
-        </ul>
-
-        <div style="font-weight:700;margin-top:18px;margin-bottom:8px;">المتواجدون</div>
-        <ul class="participants" id="participants">
-          <!-- Participants will be rendered here -->
-        </ul>
-      </aside>
-    </div>
-
-    <footer>شات المهندس — جاهز للنشر</footer>
-  </div>
-
-  <!-- Login / Join overlay -->
-  <div class="overlay" id="loginOverlay" aria-hidden="false">
-    <div class="card" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
-      <h2 id="joinTitle">مرحبًا — سجّل دخولك إلى شات المهندس</h2>
-
-      <div class="form-row">
-        <label for="username">الاسم</label>
-        <input id="username" type="text" maxlength="40" placeholder="مثال: أحمد المهندس" />
-      </div>
-
-      <div class="form-row">
-        <label for="password">كلمة المرور (مطلوبة فقط للمستخدم "المهندس")</label>
-        <input id="password" type="password" maxlength="80" placeholder="كلمة المرور إن كنت المالك" />
-      </div>
-
-      <div class="form-row">
-        <label for="roomSelect">اختر الغرفة</label>
-        <input id="roomSelect" type="text" maxlength="40" value="main" />
-        <div class="tiny">يمكنك استخدام أسماء غرف جديدة أو اختيار واحدة من القائمة.</div>
-      </div>
-
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
-        <button id="joinBtn" style="background:var(--accent);color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;">دخول</button>
-      </div>
-
     </div>
   </div>
 
+  <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // UI refs
-    const overlay = document.getElementById('loginOverlay');
-    const joinBtn = document.getElementById('joinBtn');
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    const roomInput = document.getElementById('roomSelect');
-    const connStatus = document.getElementById('connStatus');
-    const latency = document.getElementById('latency');
-    const messagesContainer = document.getElementById('messagesContainer');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const currentRoomLabel = document.getElementById('currentRoom');
-    const currentUserLabel = document.getElementById('currentUser');
-    const queueInfo = document.getElementById('queueInfo');
-    const roomsList = document.getElementById('rooms');
-    const participantsList = document.getElementById('participants');
+    // Client-side script
+    const socket = io('/chat', { transports: ['websocket'], reconnection: true });
 
     // State
-    let socket = null;
     let username = null;
-    let room = 'main';
-    let connected = false;
-    let msgQueue = [];
-    let latencyTimer = null;
+    let isOwner = false;
+    let replyTo = null; // { id, username, text } or null
+    const messagesEl = document.getElementById('messages');
+    const participantsEl = document.getElementById('participants');
 
-    // Helper to sanitize text (simple)
-    function escapeHtml(text) {
-      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-      return String(text).replace(/[&<>"']/g, function(m){ return map[m]; });
+    // Login elements
+    const loginPage = document.getElementById('loginPage');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginUsername = document.getElementById('login-username');
+    const loginPassword = document.getElementById('login-password');
+
+    // App elements
+    const appEl = document.getElementById('app');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const attachBtn = document.getElementById('attachBtn');
+    const fileInput = document.getElementById('fileInput');
+    const emojiBar = document.getElementById('emojiBar');
+    const replyBtn = document.getElementById('replyBtn');
+    const replyBox = document.getElementById('replyBox');
+    const replyText = document.getElementById('replyText');
+    const cancelReply = document.getElementById('cancelReply');
+    const participantsList = document.getElementById('participants');
+
+    const settingName = document.getElementById('settingName');
+    const saveName = document.getElementById('saveName');
+    const bgColor = document.getElementById('bgColor');
+    const saveBg = document.getElementById('saveBg');
+
+    // Helpers
+    function fmtTime(iso) {
+      try {
+        const d = new Date(iso);
+        return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {
+        return iso;
+      }
     }
 
-    // Add message to DOM
-    function addMessageToDOM(msg, opts = {}) {
-      const el = document.createElement('div');
-      let classes = 'message';
-      if (opts.me) classes += ' me';
-      if (msg.is_owner) classes += ' owner';
-      el.className = classes;
-
+    function createMessageElement(msg, me=false) {
       if (msg.type === 'system') {
-        const sys = document.createElement('div');
-        sys.className = 'system';
-        sys.textContent = msg.text + ' · ' + msg.time;
-        // prepend for column-reverse
-        messagesContainer.prepend(sys);
-        return;
+        const el = document.createElement('div');
+        el.className = 'system';
+        el.textContent = msg.text + ' · ' + fmtTime(msg.time);
+        return el;
       }
 
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      // If owner, show gold name with crown
+      const el = document.createElement('div');
+      el.className = 'msg' + (me ? ' me' : '');
+      // user
+      const userDiv = document.createElement('div');
+      userDiv.className = 'msg-user';
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = msg.username;
       if (msg.is_owner) {
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'username-owner';
-        nameSpan.textContent = `${msg.username} 👑`;
-        meta.appendChild(nameSpan);
-        const timeSpan = document.createElement('span');
-        timeSpan.style.marginLeft = '8px';
-        timeSpan.style.color = 'var(--muted)';
-        timeSpan.textContent = msg.time;
-        meta.appendChild(timeSpan);
-      } else {
-        meta.textContent = `${msg.username} • ${msg.time}`;
+        nameSpan.classList.add('owner');
+        nameSpan.textContent = msg.username + ' 👑';
+      }
+      userDiv.appendChild(nameSpan);
+      el.appendChild(userDiv);
+
+      // quoted (reply_to)
+      if (msg.reply_to && msg.reply_to_preview) {
+        const q = document.createElement('div');
+        q.className = 'quote';
+        q.textContent = `${msg.reply_to_preview.username}: ${msg.reply_to_preview.text || '[محتوى مرفق]'}`;
+        el.appendChild(q);
       }
 
-      const body = document.createElement('div');
-      body.textContent = msg.text;
+      // text or file
+      if (msg.text) {
+        const txt = document.createElement('div');
+        txt.textContent = msg.text;
+        el.appendChild(txt);
+      }
 
-      el.appendChild(meta);
-      el.appendChild(body);
-      messagesContainer.prepend(el);
+      if (msg.file) {
+        // if image, show preview
+        const f = msg.file;
+        const ext = (f.filename || '').split('.').pop().toLowerCase();
+        if (["png","jpg","jpeg","gif","webp"].includes(ext)) {
+          const img = document.createElement('img');
+          img.src = f.url;
+          img.style.maxWidth = '320px';
+          img.style.display = 'block';
+          img.style.marginTop = '8px';
+          img.style.borderRadius = '6px';
+          el.appendChild(img);
+        } else {
+          const a = document.createElement('a');
+          a.href = f.url;
+          a.target = '_blank';
+          a.className = 'file-link';
+          a.textContent = 'فتح الملف: ' + f.filename;
+          el.appendChild(a);
+        }
+      }
+
+      const time = document.createElement('div');
+      time.className = 'msg-time';
+      time.textContent = fmtTime(msg.time);
+      el.appendChild(time);
+
+      // attach reply action on click
+      el.addEventListener('contextmenu', (ev) => {
+        ev.preventDefault();
+        // on right-click, set reply
+        setReply({ id: msg.id, username: msg.username, text: msg.text });
+      });
+
+      // Also add small reply button on hover -- simplified by adding double-click
+      el.addEventListener('dblclick', () => {
+        setReply({ id: msg.id, username: msg.username, text: msg.text });
+      });
+
+      return el;
     }
 
-    // Render history (array oldest->newest)
+    function appendMessage(msg) {
+      // build reply_preview for messages that reference another message id
+      if (msg.reply_to) {
+        // find referenced message in DOM or in history; simplified: server may include preview in message.reply_to_preview
+        // If not present, show placeholder
+        if (!msg.reply_to_preview) {
+          msg.reply_to_preview = { username: 'رسالة سابقة', text: '[محتوى مقتبس]' };
+        }
+      }
+      const el = createMessageElement(msg, msg.username === username);
+      messagesEl.prepend(el); // newest at top-like feel; scroll behavior can be adjusted
+    }
+
     function renderHistory(history) {
-      messagesContainer.innerHTML = '';
+      messagesEl.innerHTML = '';
+      // history is oldest->newest; render newest last so it appears at top if using prepend
       for (let i = history.length - 1; i >= 0; i--) {
-        const m = history[i];
-        addMessageToDOM({
-          type: m.type,
-          username: m.username || '',
-          text: m.text || '',
-          time: m.time || '',
-          is_owner: !!m.is_owner
-        }, { me: m.username === username });
+        appendMessage(history[i]);
       }
     }
 
-    // Render participants list
     function renderParticipants(presence) {
       participantsList.innerHTML = '';
       presence.forEach(p => {
-        const li = document.createElement('li');
-        li.textContent = p.username + (p.is_owner ? ' 👑' : '');
-        if (p.is_owner) li.classList.add('owner');
-        participantsList.appendChild(li);
+        const div = document.createElement('div');
+        div.className = 'participant';
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = p.username + (p.is_owner ? ' 👑' : '');
+        if (p.is_owner) name.classList.add('owner');
+        div.appendChild(name);
+        participantsList.appendChild(div);
       });
     }
 
-    // Room selection
-    roomsList.addEventListener('click', (ev) => {
-      const li = ev.target.closest('li[data-room]');
-      if (!li) return;
-      const selected = li.getAttribute('data-room');
-      if (selected === room) return;
-      roomsList.querySelectorAll('li').forEach(n => n.classList.remove('active'));
-      li.classList.add('active');
-      if (connected && socket) {
-        socket.emit('leave', { username, room }, (ack) => {
-          // ignore
-        });
-        room = selected;
-        currentRoomLabel.textContent = room;
-        socket.emit('join', { username, room, password: passwordInput.value }, (resp) => {
-          if (resp && resp.status === 'ok') {
-            renderHistory(resp.history || []);
-            renderParticipants(resp.presence || []);
-            flushQueue();
-          } else if (resp && resp.status === 'error') {
-            if (resp.reason === 'invalid_owner_password') {
-              alert('كلمة مرور المالك غير صحيحة.');
-              // Keep user out of owner identity; force overlay to show again
-              overlay.style.display = 'flex';
-            }
-          }
-        });
-      } else {
-        room = selected;
-        currentRoomLabel.textContent = room;
-      }
+    // Reply handling
+    function setReply(r) {
+      replyTo = r;
+      replyBox.style.display = 'flex';
+      replyText.textContent = `${r.username}: ${r.text ? r.text.slice(0,140) : '[مرفق]'}`;
+    }
+    cancelReply.addEventListener('click', () => {
+      replyTo = null;
+      replyBox.style.display = 'none';
     });
 
-    // Join action
-    joinBtn.addEventListener('click', startChat);
-    usernameInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') startChat(); });
-    passwordInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') startChat(); });
-    roomInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') startChat(); });
-
-    function startChat() {
-      const name = (usernameInput.value || '').trim();
-      const pw = (passwordInput.value || '').trim();
-      const r = (roomInput.value || 'main').trim() || 'main';
-      if (!name) { alert('الرجاء إدخال اسمك'); usernameInput.focus(); return; }
-      username = name;
-      room = r;
-      currentUserLabel.textContent = username;
-      currentRoomLabel.textContent = room;
-      overlay.style.display = 'none';
-
-      initSocket(() => {
-        // After connected, emit join with password if any
-        socket.emit('join', { username, room, password: pw }, (resp) => {
-          if (resp && resp.status === 'ok') {
-            renderHistory(resp.history || []);
-            renderParticipants(resp.presence || []);
-            flushQueue();
-            // If an owner joined (this client is owner) and server returned ok, server already broadcast system message.
-          } else if (resp && resp.status === 'error') {
-            if (resp.reason === 'invalid_owner_password') {
-              alert('كلمة مرور المالك غير صحيحة.');
-              // show overlay again for correction
-              overlay.style.display = 'flex';
-            } else {
-              alert('فشل في الانضمام: ' + (resp.reason || 'خطأ غير معروف'));
-              overlay.style.display = 'flex';
-            }
-          }
-        });
-      });
-    }
-
-    // Initialize socket with robust options
-    function initSocket(callback) {
-      if (socket) {
-        try { socket.disconnect(); } catch (e) {}
-        socket = null;
-      }
-
-      socket = io('/chat', {
-        transports: ['websocket'],
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        timeout: 20000
-      });
-
-      socket.on('connect', () => {
-        connected = true;
-        connStatus.textContent = 'متصل';
-        connStatus.style.background = '#dcfce7';
-        connStatus.style.color = '#0f5132';
-        latency.textContent = '';
-        if (typeof callback === 'function') callback();
-      });
-
-      socket.on('disconnect', (reason) => {
-        connected = false;
-        connStatus.textContent = 'غير متصل';
-        connStatus.style.background = '';
-        connStatus.style.color = '';
-        latency.textContent = '';
-      });
-
-      socket.on('connect_error', (err) => {
-        connected = false;
-        connStatus.textContent = 'خطأ بالاتصال';
-      });
-
-      socket.io.on('reconnect_attempt', (attempt) => {
-        connStatus.textContent = `إعادة الاتصال... (${attempt})`;
-      });
-
-      socket.io.on('reconnect', (attempt) => {
-        connStatus.textContent = 'متصل';
-      });
-
-      socket.on('connected', (data) => {
-        // welcome from server
-      });
-
-      socket.on('system_message', (msg) => {
-        addMessageToDOM({ type: 'system', text: msg.text, time: msg.time });
-      });
-
-      socket.on('message', (msg) => {
-        addMessageToDOM({
-          type: 'message',
-          username: msg.username,
-          text: msg.text,
-          time: msg.time,
-          is_owner: !!msg.is_owner
-        }, { me: msg.username === username });
-      });
-
-      socket.on('presence_update', (data) => {
-        if (data && data.presence) {
-          renderParticipants(data.presence);
-        }
-      });
-
-      socket.on('pong_server', (data) => {
-        const clientTs = data.ts;
-        const serverTs = data.server_ts;
-        if (clientTs && !isNaN(Number(clientTs))) {
-          const rtt = Date.now() - Number(clientTs);
-          latency.textContent = `زمن الرحلة: ${rtt} ms`;
-        } else {
-          latency.textContent = `متصل · ${serverTs}`;
-        }
-      });
-
-      // Heartbeat ping
-      if (latencyTimer) clearInterval(latencyTimer);
-      latencyTimer = setInterval(() => {
-        if (socket && socket.connected) {
-          socket.emit('ping_server', { ts: Date.now() });
-        }
-      }, 5000);
-    }
-
-    // Send message (queue when offline)
-    function sendMessage() {
-      const text = (messageInput.value || '').trim();
-      if (!text) return;
-      const client_id = `c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-      const payload = { username, room, text, client_id };
-      // Optimistic UI
-      addMessageToDOM({
-        type: 'message',
-        username,
-        text,
-        time: new Date().toISOString(),
-        is_owner: (username === 'المهندس' && passwordInput.value === 'samy779h') // visual hint if local
-      }, { me: true });
-      messageInput.value = '';
-      if (connected && socket && socket.connected) {
-        socket.timeout(5000).emit('message', payload, (resp) => {
-          if (!resp || resp.status !== 'ok') {
-            msgQueue.push(payload);
-            queueInfo.style.display = 'block';
-          }
-        });
-      } else {
-        msgQueue.push(payload);
-        queueInfo.style.display = 'block';
-      }
-    }
-
-    sendBtn.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') sendMessage(); });
-
-    function flushQueue() {
-      if (!msgQueue.length || !connected || !socket) {
-        queueInfo.style.display = msgQueue.length ? 'block' : 'none';
-        return;
-      }
-      const pending = msgQueue.slice();
-      msgQueue = [];
-      queueInfo.style.display = 'none';
-      let idx = 0;
-      function sendNext() {
-        if (idx >= pending.length) return;
-        const payload = pending[idx++];
-        socket.timeout(5000).emit('message', payload, (resp) => {
-          if (!resp || resp.status !== 'ok') {
-            msgQueue.push(payload);
-            queueInfo.style.display = 'block';
-          }
-          setTimeout(sendNext, 120);
-        });
-      }
-      sendNext();
-    }
-
-    // Auto-focus input after closing overlay
-    document.addEventListener('click', () => {
-      if (!overlay || overlay.style.display === 'none') {
+    // Emoji buttons
+    emojiBar.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        messageInput.value += btn.textContent;
         messageInput.focus();
+      });
+    });
+
+    // Attach file
+    attachBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (ev) => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res = await fetch('/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+          // send a message with file info (and optional text)
+          socket.emit('message', {
+            text: '',
+            file: { url: data.url, filename: data.filename, mimetype: file.type },
+            reply_to: replyTo ? replyTo.id : null
+          }, (ack) => {
+            // clear reply
+            replyTo = null;
+            replyBox.style.display = 'none';
+            fileInput.value = '';
+          });
+        } else {
+          alert('فشل رفع الملف: ' + (data.error || 'unknown'));
+        }
+      } catch (e) {
+        alert('خطأ في رفع الملف');
       }
     });
 
-    window.addEventListener('beforeunload', () => {
-      try { if (socket) socket.disconnect(); } catch (e) {}
+    // Send message
+    sendBtn.addEventListener('click', () => {
+      const txt = messageInput.value.trim();
+      const payload = { text: txt, reply_to: replyTo ? replyTo.id : null };
+      if (!txt && !replyTo) return;
+      socket.emit('message', payload, (ack) => {
+        if (ack && ack.status === 'ok') {
+          // optimistic UI: server will broadcast back; we can clear input
+          messageInput.value = '';
+          replyTo = null;
+          replyBox.style.display = 'none';
+        } else {
+          alert('فشل إرسال الرسالة');
+        }
+      });
     });
+    messageInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+
+    // Reply button toggles an instruction to right-click/double-click to reply
+    replyBtn.addEventListener('click', () => {
+      alert('للرد على رسالة اضغط مزدوجًا عليها أو انقر بزر الفأرة الأيمن عليها ثم اضغط "إلغاء الرد" لإلغاء.');
+    });
+
+    // Settings: change name
+    saveName.addEventListener('click', () => {
+      const newName = settingName.value.trim();
+      if (!newName) { alert('أدخل اسمًا صالحًا'); return; }
+      socket.emit('update_profile', { new_name: newName }, (resp) => {
+        if (resp && resp.status === 'ok') {
+          username = newName;
+          alert('تم تحديث الاسم');
+        } else {
+          alert('فشل تحديث الاسم');
+        }
+      });
+    });
+
+    // Settings: change background color
+    saveBg.addEventListener('click', () => {
+      const c = bgColor.value || '#000000';
+      document.body.style.background = c;
+      // store in localStorage (client-only)
+      localStorage.setItem('chat_bg', c);
+      // inform server of bg (optional)
+      socket.emit('update_profile', { bg: c }, (resp) => {});
+    });
+
+    // Persist background
+    const savedBg = localStorage.getItem('chat_bg');
+    if (savedBg) document.body.style.background = savedBg;
+
+    // Socket events
+    socket.on('connect', () => {
+      console.log('connected to server');
+    });
+
+    socket.on('connected', (data) => {
+      // optional server welcome
+    });
+
+    socket.on('system_message', (msg) => {
+      // msg: { id, type: 'system', text, time }
+      appendMessage(msg);
+    });
+
+    socket.on('message', (msg) => {
+      // msg: { id, type: 'message', username, is_owner, text, file, reply_to, time }
+      // Optionally, server may not include reply_to_preview; not critical.
+      appendMessage(msg);
+    });
+
+    socket.on('presence_update', (data) => {
+      if (data && data.presence) {
+        renderParticipants(data.presence);
+      }
+    });
+
+    // Initial login flow
+    loginBtn.addEventListener('click', doLogin);
+    loginUsername.addEventListener('keyup', (e) => { if (e.key === 'Enter') doLogin(); });
+    loginPassword.addEventListener('keyup', (e) => { if (e.key === 'Enter') doLogin(); });
+
+    function doLogin() {
+      const name = loginUsername.value.trim();
+      const pw = loginPassword.value;
+      if (!name) { alert('أدخل اسم مستخدم'); return; }
+      // emit join: server will validate owner if name matches OWNER_USERNAME
+      socket.emit('join', { username: name, password: pw }, (resp) => {
+        if (!resp) { alert('خطأ في الاتصال'); return; }
+        if (resp.status === 'error') {
+          if (resp.reason === 'invalid_owner_password') {
+            alert('كلمة مرور المالك غير صحيحة.');
+            return;
+          } else {
+            alert('خطأ: ' + resp.reason);
+            return;
+          }
+        }
+        // success
+        username = name;
+        isOwner = (name === "{{OWNER_USERNAME}}" || name === "المهندس"); // visual hint; actual owner determined by server events
+        // hide login, show app
+        loginPage.style.display = 'none';
+        appEl.style.display = 'flex';
+        // render history and presence
+        if (resp.history) renderHistory(resp.history);
+        if (resp.presence) renderParticipants(resp.presence);
+        // set settings input default
+        settingName.value = username;
+      });
+    }
+
+    // Right after page load, we can attach keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        // cancel reply
+        replyTo = null;
+        replyBox.style.display = 'none';
+      }
+    });
+
+    // Receive initial presence/history if server emits them on connect? Server sends on join ack.
+
+    // Small UX: tooltip showing how to reply
+    (function showReplyHint() {
+      // no-op for brevity; you can show a small toast if desired
+    })();
   </script>
 </body>
 </html>
