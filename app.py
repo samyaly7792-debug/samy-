@@ -1,208 +1,182 @@
-from flask import Flask, render_template_string, request
-from flask_socketio import SocketIO
+#!/usr/bin/env python3
+# app.py
+# Flask + Flask-SocketIO backend for "شات المهندس"
+# Requirements:
+#   pip install flask flask-socketio eventlet
 
-app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
+from flask import Flask, render_template, jsonify, request
+from flask_socketio import SocketIO, join_room, leave_room, emit
+from collections import deque, defaultdict
+from datetime import datetime
+import logging
 
-# قاعدة بيانات وهمية لحفظ الحسابات
-USERS_DB = {
-    "المهندس": "1234"
-}
+# Try to use eventlet for better WebSocket support/performance; fallback otherwise.
+async_mode = None
+try:
+    import eventlet  # noqa: F401
+    eventlet.monkey_patch()
+    async_mode = 'eventlet'
+except Exception:
+    async_mode = 'threading'
 
-HTML_TEMPLATE = """<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>👑 شات المهندس الاحترافي 👑</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; background: #0f172a; color: #e2e8f0; font-family: sans-serif; overflow: hidden; }
-        
-        #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 20px; background: #0f172a; }
-        .login-card { background: #1e293b; padding: 30px 25px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; border: 1px solid #334155; }
-        .login-card h1 { color: #FFD700; margin-bottom: 20px; font-size: 1.6rem; text-shadow: 0 0 10px rgba(255,215,0,0.2); }
-        .login-card input { width: 100%; padding: 14px; margin-bottom: 12px; border: 1px solid #475569; border-radius: 8px; background: #0f172a; color: white; font-size: 1rem; outline: none; text-align: center; }
-        .login-card button { width: 100%; padding: 14px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
-        .login-card button:hover { background: #0369a1; }
-        #login-error { color: #ef4444; font-size: 0.9rem; margin-top: 10px; display: none; }
+app = Flask(__name__, template_folder="templates")
+app.config['SECRET_KEY'] = 'change-this-secret-in-production'
 
-        #chat-screen { display: none; flex-direction: column; height: 100%; }
-        
-        #header { background: #1e293b; padding: 15px; text-align: center; border-bottom: 2px solid #334155; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
-        #header h2 { margin: 0; font-size: 1.2rem; color: #FFD700; flex: 1; text-align: center; }
-        .user-tag { background: #334155; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; color: #38bdf8; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        
-        #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        
-        .msg-box { padding: 10px 14px; border-radius: 12px; max-width: 80%; font-size: 0.95rem; line-height: 1.4; word-break: break-word; animation: fadeIn 0.2s ease-out; }
-        .msg-normal { background: #1e293b; align-self: flex-start; border-top-right-radius: 2px; }
-        .msg-owner { background: linear-gradient(135deg, #1e293b 0%, #2e2612 100%); border: 1px solid #FFD700; align-self: flex-start; border-top-right-radius: 2px; }
-        
-        .owner-gold { color: #FFD700; font-weight: bold; text-shadow: 0 0 5px #FFD700; }
-        .user-name { color: #38bdf8; font-weight: bold; }
-        
-        #interactive-area { background: #1e293b; border-top: 2px solid #334155; flex-shrink: 0; }
-        #emoji-bar { padding: 8px 12px; display: flex; gap: 14px; background: #111827; overflow-x: auto; font-size: 1.2rem; border-bottom: 1px solid #334155; }
-        .emoji-btn { cursor: pointer; user-select: none; }
-        
-        #input-area { padding: 12px; display: flex; gap: 10px; align-items: center; }
-        #msg { flex: 1; padding: 14px; border: 1px solid #475569; border-radius: 8px; background: #0f172a; color: white; font-size: 1rem; outline: none; }
-        #send-btn { background: #0284c7; color: white; border: none; padding: 14px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; flex-shrink: 0; }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-</head>
-<body>
+# Configure SocketIO with CORS allowed for development. Restrict in production!
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=async_mode)
 
-    <!-- شاشة الدخول والتسجيل -->
-    <div id="login-screen">
-        <div class="login-card">
-            <h1>👑 تسجيل دخول الشات </h1>
-            <input type="text" id="login-user" placeholder="أدخل اسم المستخدم..." autocomplete="off">
-            <input type="password" id="login-pass" placeholder="أدخل كلمة المرور..." autocomplete="off">
-            <button onclick="loginOrRegister()">دخول / تسجيل جديد</button>
-            <div id="login-error">خطأ في كلمة المرور للاسم المحمي!</div>
-        </div>
-    </div>
+# In-memory message history per room (keeps last N messages)
+MAX_HISTORY_PER_ROOM = 100
+message_history = defaultdict(lambda: deque(maxlen=MAX_HISTORY_PER_ROOM))
 
-    <!-- شاشة الشات الرئيسية -->
-    <div id="chat-screen">
-        <div id="header">
-            <div style="width:60px;"></div>
-            <h2>👑 شات المهندس 👑</h2>
-            <div class="user-tag" id="my-display-name">...</div>
-        </div>
-        
-        <div id="chat-window"></div>
-        
-        <div id="interactive-area">
-            <div id="emoji-bar">
-                <span class="emoji-btn" onclick="addEmoji('👑')">👑</span>
-                <span class="emoji-btn" onclick="addEmoji('💻')">💻</span>
-                <span class="emoji-btn" onclick="addEmoji('🔥')">🔥</span>
-                <span class="emoji-btn" onclick="addEmoji('😂')">😂</span>
-                <span class="emoji-btn" onclick="addEmoji('👍')">👍</span>
-                <span class="emoji-btn" onclick="addEmoji('🌹')">🌹</span>
-            </div>
-            <div id="input-area">
-                <input id="msg" placeholder="اكتب رسالتك هنا..." autocomplete="off">
-                <button id="send-btn" onclick="send()">إرسال</button>
-            </div>
-        </div>
-    </div>
+# Simple in-memory mapping of sid -> user info (for logging/disconnect handling)
+connected_users = {}
 
-    <script src="https://cloudflare.com"></script>
-    <script>
-        // تفعيل الاتصال الموثق والآمن لحل مشكلة توقف الأزرار على ريندر
-        const socket = io({
-            transports: ['websocket', 'polling'],
-            secure: true,
-            rejectUnauthorized: false
-        });
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("chat")
 
-        let currentUsername = "";
-
-        document.getElementById('msg').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') send();
-        });
-
-        document.getElementById('login-pass').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') loginOrRegister();
-        });
-
-        function convertArabicNumbers(str) {
-            return str.replace(/[٠-٩]/g, function (d) {
-                return d.charCodeAt(0) - 1632;
-            });
-        }
-
-        function loginOrRegister() {
-            const userField = document.getElementById('login-user');
-            const passField = document.getElementById('login-pass');
-            let username = userField.value.trim();
-            let password = convertArabicNumbers(passField.value.trim());
-
-            if(username === "" || password === "") {
-                alert("الرجاء كتابة الاسم وكلمة المرور أولاً!");
-                return;
-            }
-            socket.emit('verify_login', { username: username, password: password });
-        }
-
-        socket.on('login_response', function(data) {
-            const errorDiv = document.getElementById('login-error');
-            if(data.success) {
-                currentUsername = data.username;
-                document.getElementById('my-display-name').textContent = currentUsername;
-                document.getElementById('login-screen').style.display = "none";
-                document.getElementById('chat-screen').style.display = "flex";
-                document.getElementById('msg').focus();
-            } else {
-                errorDiv.textContent = data.message;
-                errorDiv.style.display = "block";
-            }
-        });
-
-        function addEmoji(emoji) {
-            const msgInput = document.getElementById('msg');
-            msgInput.value += emoji;
-            msgInput.focus();
-        }
-        
-        function send() {
-            let msgInput = document.getElementById('msg');
-            let msg = msgInput.value.trim();
-            if (msg === '' || currentUsername === '') return;
-            socket.emit('message', {username: currentUsername, msg: msg});
-            msgInput.value = '';
-            msgInput.focus();
-        }
-        
-        socket.on('message', function(data) {
-            let chat = document.getElementById('chat-window');
-            let div = document.createElement('div');
-            if(data.is_owner) {
-                div.className = "msg-box msg-owner";
-                div.innerHTML = "<span class='owner-gold'>👑 " + data.username + ":</span> <span style='color: #fff;'>" + data.msg + "</span>";
-            } else {
-                div.className = "msg-box msg-normal";
-                div.innerHTML = "<span class='user-name'>" + data.username + ":</span> <span style='color: #e2e8f0;'>" + data.msg + "</span>";
-            }
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-        });
-    </script>
-</body>
-</html>"""
-
-@app.route('/')
+@app.route("/", methods=["GET"])
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    """
+    Serve the chat UI.
+    """
+    return render_template("index.html")
 
-@socketio.on('verify_login')
-def handle_login(data):
-    username = data.get('username', '').strip()
-    password = data.get('password', '').strip()
-    
-    if username == "المهندس" and password != USERS_DB["المهندس"]:
-        socketio.emit('login_response', {'success': False, 'message': 'عذراً، كلمة مرور المالك غير صحيحة!'}, room=request.sid)
-        return
+@app.route("/health", methods=["GET"])
+def health():
+    """
+    Health check endpoint.
+    """
+    return jsonify({"status": "ok", "time": datetime.utcnow().isoformat() + "Z"})
 
-    if username not in USERS_DB:
-        USERS_DB[username] = password
+def _now_iso():
+    return datetime.utcnow().isoformat() + "Z"
 
-    if USERS_DB[username] == password:
-        socketio.emit('login_response', {'success': True, 'username': username}, room=request.sid)
-    else:
-        socketio.emit('login_response', {'success': False, 'message': 'اسم المستخدم مسجل بكلمة مرور أخرى!'}, room=request.sid)
+@socketio.on("connect", namespace="/chat")
+def handle_connect():
+    sid = request.sid
+    logger.info(f"[connect] sid={sid}")
+    # No ACK return; client will receive 'connected' event after join if needed.
+    # But emit a welcome (private) message.
+    emit("connected", {"message": "متصل بالخادم", "time": _now_iso()})
 
-@socketio.on('message')
+@socketio.on("join", namespace="/chat")
+def handle_join(data):
+    """
+    data: { username: str, room: str }
+    Returns ack with current room history.
+    """
+    sid = request.sid
+    username = data.get("username", "مستخدم غير معروف")
+    room = data.get("room", "main")
+    # Save user info
+    connected_users[sid] = {"username": username, "room": room}
+    join_room(room)
+    logger.info(f"[join] sid={sid} username={username} room={room}")
+    system_msg = {
+        "type": "system",
+        "text": f"{username} انضمّ إلى الغرفة.",
+        "time": _now_iso()
+    }
+    # Broadcast system message to room (including to the new user)
+    emit("system_message", system_msg, room=room)
+    # Send current history back to the joining client as ack (return value)
+    hist = list(message_history[room])
+    return {"status": "ok", "history": hist}
+
+@socketio.on("leave", namespace="/chat")
+def handle_leave(data):
+    """
+    data: { username: str, room: str }
+    """
+    sid = request.sid
+    username = data.get("username", "مستخدم غير معروف")
+    room = data.get("room", "main")
+    leave_room(room)
+    logger.info(f"[leave] sid={sid} username={username} room={room}")
+    system_msg = {
+        "type": "system",
+        "text": f"{username} غادر الغرفة.",
+        "time": _now_iso()
+    }
+    emit("system_message", system_msg, room=room)
+    # Remove from connected_users if matches
+    if sid in connected_users:
+        try:
+            if connected_users[sid].get("room") == room:
+                del connected_users[sid]
+        except KeyError:
+            pass
+    return {"status": "ok"}
+
+@socketio.on("message", namespace="/chat")
 def handle_message(data):
-    if data.get('username') == "المهندس":
-        data['is_owner'] = True
-    else:
-        data['is_owner'] = False
-    socketio.emit('message', data)
+    """
+    data: { username: str, room: str, text: str, client_id?: str }
+    Returns ack with server timestamp and optional message id.
+    """
+    sid = request.sid
+    username = data.get("username", "مستخدم غير معروف")
+    room = data.get("room", "main")
+    text = data.get("text", "")
+    client_id = data.get("client_id")  # optional id from client for matching acks
+    timestamp = _now_iso()
+    if not text:
+        logger.info(f"[message] empty text from sid={sid}; ignoring")
+        return {"status": "error", "reason": "empty_text"}
 
-if __name__ == '__main__':
+    msg = {
+        "type": "message",
+        "username": username,
+        "text": text,
+        "time": timestamp,
+        "client_id": client_id
+    }
+
+    # Append to history
+    message_history[room].append(msg)
+    # Broadcast to the room
+    emit("message", msg, room=room)
+    logger.info(f"[message] room={room} username={username} text_len={len(text)}")
+    # Return ack
+    return {"status": "ok", "time": timestamp}
+
+@socketio.on("ping_server", namespace="/chat")
+def handle_ping(data):
+    """
+    Lightweight ping-pong to check latency and connectivity.
+    client sends: { ts: <client timestamp> }
+    server responds with: { ts: <client ts>, server_ts: <server ts> }
+    """
+    sid = request.sid
+    client_ts = data.get("ts")
+    server_ts = _now_iso()
+    emit("pong_server", {"ts": client_ts, "server_ts": server_ts})
+
+@socketio.on("disconnect", namespace="/chat")
+def handle_disconnect():
+    sid = request.sid
+    user = connected_users.get(sid)
+    if user:
+        username = user.get("username", "مستخدم")
+        room = user.get("room", "main")
+        logger.info(f"[disconnect] sid={sid} username={username} room={room}")
+        # Broadcast that the user left
+        system_msg = {
+            "type": "system",
+            "text": f"{username} فقد الاتصال أو غادر.",
+            "time": _now_iso()
+        }
+        emit("system_message", system_msg, room=room)
+        try:
+            del connected_users[sid]
+        except KeyError:
+            pass
+    else:
+        logger.info(f"[disconnect] sid={sid} (unknown user)")
+
+if __name__ == "__main__":
+    # Production note: use an async worker (eventlet/gevent) for heavy load and enable message queue (Redis)
+    logger.info(f"Starting Flask-SocketIO server (async_mode={async_mode})")
+    socketio.run(app, host="0.0.0.0", port=5000)
