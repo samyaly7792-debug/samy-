@@ -1,1 +1,513 @@
+<!doctype html>
+<!-- templates/index.html -->
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>شات المهندس</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --accent: #0b5ed7;
+      --muted: #6c757d;
+      --success: #198754;
+    }
+    html,body {
+      height:100%;
+      margin:0;
+      font-family: "Segoe UI", Tahoma, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(180deg,#eef2ff 0%, #f6f7fb 100%);
+      color:#111827;
+    }
+    .app {
+      max-width:950px;
+      margin:20px auto;
+      background:var(--panel);
+      border-radius:10px;
+      box-shadow:0 8px 24px rgba(15,23,42,0.08);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height:80vh;
+    }
+    header {
+      padding:18px 22px;
+      border-bottom:1px solid #eef2ff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:linear-gradient(90deg,#ffffff, #f8fbff);
+    }
+    header h1 {
+      margin:0;
+      font-size:20px;
+      color:var(--accent);
+    }
+    .status {
+      font-size:13px;
+      color:var(--muted);
+    }
+    .content {
+      display:flex;
+      flex:1;
+      min-height:0;
+    }
+    .sidebar {
+      width:220px;
+      border-left:1px solid #f1f5f9;
+      padding:14px;
+      background:#fbfdff;
+    }
+    .room-list { list-style:none; padding:0; margin:0; }
+    .room-list li {
+      padding:8px 10px;
+      border-radius:6px;
+      margin-bottom:6px;
+      cursor:pointer;
+      color:#0f1724;
+    }
+    .room-list li.active { background:rgba(11,94,215,0.08); color:var(--accent); font-weight:600; }
+    .main {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      padding:14px;
+      min-height:0;
+    }
+    .messages {
+      flex:1;
+      overflow:auto;
+      padding:8px;
+      display:flex;
+      flex-direction:column-reverse; /* show bottom by default */
+      gap:8px;
+    }
+    .message {
+      max-width:75%;
+      padding:10px 12px;
+      border-radius:10px;
+      background:#eef2ff;
+      color:#042a56;
+      align-self:flex-start;
+      box-shadow:0 1px 2px rgba(2,6,23,0.04);
+    }
+    .message.me { background:#d1e7dd; color:#0f5132; align-self:flex-end; }
+    .meta { font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .compose {
+      display:flex;
+      gap:8px;
+      padding-top:10px;
+      border-top:1px solid #f1f5f9;
+    }
+    .compose input[type="text"] {
+      flex:1;
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid #e6edf8;
+      font-size:15px;
+    }
+    .compose button {
+      background:var(--accent);
+      color:white;
+      border:none;
+      padding:10px 14px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .overlay {
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(4,6,15,0.35);
+      z-index:50;
+    }
+    .card {
+      width:380px;
+      background:white;
+      border-radius:10px;
+      padding:18px;
+      box-shadow:0 10px 40px rgba(2,6,23,0.18);
+    }
+    .card h2 { margin:0 0 12px 0; font-size:18px; color:#042a56; }
+    .form-row { margin-bottom:10px; }
+    .form-row label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+    .form-row input {
+      width:100%;
+      padding:9px 12px;
+      border-radius:8px;
+      border:1px solid #e6edf8;
+      font-size:14px;
+    }
+    .tiny { font-size:12px; color:var(--muted); margin-top:8px; }
+    footer { padding:10px 14px; font-size:13px; color:var(--muted); text-align:center; border-top:1px solid #f1f5f9; }
+    .connection-indicator { display:inline-block; margin-left:8px; vertical-align:middle; }
+    .badge { padding:4px 8px; border-radius:999px; background:#f1f5f9; font-weight:600; color:#0b5ed7; font-size:12px; }
+    @media (max-width:820px) {
+      .app { margin:10px; }
+      .sidebar { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="شات المهندس">
+    <header>
+      <h1>شات المهندس</h1>
+      <div class="status">
+        الحالة:
+        <span id="connStatus" class="badge">غير متصل</span>
+        <span class="connection-indicator" id="latency"></span>
+      </div>
+    </header>
 
+    <div class="content">
+      <div class="main" role="main">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+          <div style="flex:1;font-size:14px;color:var(--muted);">الغرفة: <strong id="currentRoom">main</strong></div>
+          <div style="font-size:13px;color:var(--muted);">المستخدم: <strong id="currentUser">غير مسجل</strong></div>
+        </div>
+
+        <div id="messagesContainer" class="messages" aria-live="polite" aria-relevant="additions"></div>
+
+        <div class="compose" role="region" aria-label="منطقة كتابة الرسائل">
+          <input id="messageInput" type="text" placeholder="اكتب رسالتك..." autocomplete="off" />
+          <button id="sendBtn">إرسال</button>
+        </div>
+        <div class="tiny" id="queueInfo" style="display:none;">يوجد رسائل في الطابور سيتم إرسالها عند استعادة الاتصال.</div>
+      </div>
+
+      <aside class="sidebar" aria-label="قائمة الغرف">
+        <div style="font-weight:700;margin-bottom:8px;">غرف متاحة</div>
+        <ul class="room-list" id="rooms">
+          <li data-room="main" class="active">عام</li>
+          <li data-room="support">دعم</li>
+          <li data-room="projects">مشروعات</li>
+        </ul>
+      </aside>
+    </div>
+
+    <footer>شات المهندس — نسخة مبسطة للتجربة</footer>
+  </div>
+
+  <!-- Login / Join overlay -->
+  <div class="overlay" id="loginOverlay" aria-hidden="false">
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
+      <h2 id="joinTitle">مرحبًا — سجّل دخولك إلى شات المهندس</h2>
+      <div class="form-row">
+        <label for="username">الاسم</label>
+        <input id="username" type="text" maxlength="40" placeholder="مثال: أحمد المهندس" />
+      </div>
+      <div class="form-row">
+        <label for="roomSelect">اختر الغرفة</label>
+        <input id="roomSelect" type="text" maxlength="40" value="main" />
+        <div class="tiny">يمكنك استخدام أسماء غرف جديدة أو اختيار واحدة من القائمة.</div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+        <button id="joinBtn" style="background:var(--accent);color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;">دخول</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Socket.IO client is served by the server at /socket.io/socket.io.js -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // UI refs
+    const overlay = document.getElementById('loginOverlay');
+    const joinBtn = document.getElementById('joinBtn');
+    const usernameInput = document.getElementById('username');
+    const roomInput = document.getElementById('roomSelect');
+    const connStatus = document.getElementById('connStatus');
+    const latency = document.getElementById('latency');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const currentRoomLabel = document.getElementById('currentRoom');
+    const currentUserLabel = document.getElementById('currentUser');
+    const queueInfo = document.getElementById('queueInfo');
+    const roomsList = document.getElementById('rooms');
+
+    // State
+    let socket = null;
+    let username = null;
+    let room = 'main';
+    let connected = false;
+    let msgQueue = []; // queue messages when disconnected
+    let latencyTimer = null;
+
+    // Helper: format message DOM
+    function addMessageToDOM(msg, opts = {}) {
+      // msg: { type, username, text, time }
+      const el = document.createElement('div');
+      el.className = 'message' + (opts.me ? ' me' : '');
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      if (msg.type === 'system') {
+        meta.textContent = `※ ${msg.time}`;
+      } else {
+        meta.textContent = `${msg.username} • ${msg.time}`;
+      }
+      const body = document.createElement('div');
+      body.textContent = msg.text || (msg.type === 'system' ? msg.text : '[محتوى غير متاح]');
+      el.appendChild(meta);
+      el.appendChild(body);
+      // insert at top because container is column-reverse
+      messagesContainer.prepend(el);
+    }
+
+    // Render history array
+    function renderHistory(history) {
+      // history is array of messages in chronological order
+      messagesContainer.innerHTML = '';
+      for (let i = history.length - 1; i >= 0; i--) {
+        const m = history[i];
+        addMessageToDOM({
+          type: m.type,
+          username: m.username,
+          text: m.text,
+          time: m.time
+        }, { me: m.username === username });
+      }
+    }
+
+    // Setup room list click
+    roomsList.addEventListener('click', (ev) => {
+      const li = ev.target.closest('li[data-room]');
+      if (!li) return;
+      const selected = li.getAttribute('data-room');
+      if (selected === room) return;
+      // switch UI active
+      roomsList.querySelectorAll('li').forEach(n => n.classList.remove('active'));
+      li.classList.add('active');
+      // change room
+      if (connected && socket) {
+        // send leave then join
+        socket.emit('leave', { username, room }, (ack) => {
+          // ignore for now
+        });
+        room = selected;
+        currentRoomLabel.textContent = room;
+        socket.emit('join', { username, room }, (resp) => {
+          if (resp && resp.status === 'ok') {
+            renderHistory(resp.history || []);
+          }
+        });
+      } else {
+        room = selected;
+        currentRoomLabel.textContent = room;
+      }
+    });
+
+    // Join action
+    joinBtn.addEventListener('click', startChat);
+    usernameInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') startChat(); });
+    roomInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') startChat(); });
+
+    function startChat() {
+      const name = (usernameInput.value || '').trim();
+      const r = (roomInput.value || 'main').trim() || 'main';
+      if (!name) {
+        alert('الرجاء إدخال اسمك');
+        usernameInput.focus();
+        return;
+      }
+      username = name;
+      room = r;
+      currentUserLabel.textContent = username;
+      currentRoomLabel.textContent = room;
+      overlay.style.display = 'none';
+      // mark room list active if exists
+      const el = roomsList.querySelector(`li[data-room="${room}"]`);
+      roomsList.querySelectorAll('li').forEach(n => n.classList.remove('active'));
+      if (el) el.classList.add('active');
+
+      initSocket();
+    }
+
+    // Initialize Socket.IO connection with robust options
+    function initSocket() {
+      // If already connected, disconnect first
+      if (socket) {
+        try { socket.disconnect(); } catch (e) { /* ignore */ }
+        socket = null;
+      }
+
+      // Connect to namespace '/chat'
+      socket = io('/chat', {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000
+      });
+
+      // Connection lifecycle
+      socket.on('connect', () => {
+        connected = true;
+        connStatus.textContent = 'متصل';
+        connStatus.style.background = '#dcfce7';
+        connStatus.style.color = '#0f5132';
+        connStatus.classList.remove('badge');
+        connStatus.classList.add('badge');
+        connStatus.style.border = 'none';
+        latency.textContent = '';
+        // join the room with ack to get history
+        socket.emit('join', { username, room }, (resp) => {
+          if (resp && resp.status === 'ok') {
+            renderHistory(resp.history || []);
+            flushQueue();
+          }
+        });
+      });
+
+      socket.on('disconnect', (reason) => {
+        connected = false;
+        connStatus.textContent = 'غير متصل';
+        connStatus.style.background = '';
+        connStatus.style.color = '';
+        connStatus.classList.add('badge');
+        latency.textContent = '';
+      });
+
+      socket.on('connect_error', (err) => {
+        connected = false;
+        connStatus.textContent = 'خطأ بالاتصال';
+      });
+
+      socket.io.on('reconnect_attempt', (attempt) => {
+        connStatus.textContent = `إعادة الاتصال... (${attempt})`;
+      });
+
+      socket.io.on('reconnect', (attempt) => {
+        connStatus.textContent = 'متصل';
+      });
+
+      socket.on('connected', (data) => {
+        // server welcome
+        // no-op
+      });
+
+      // System messages
+      socket.on('system_message', (msg) => {
+        addMessageToDOM({ type: 'system', text: msg.text, time: msg.time });
+      });
+
+      // Broadcasted messages from server
+      socket.on('message', (msg) => {
+        addMessageToDOM({
+          type: 'message',
+          username: msg.username,
+          text: msg.text,
+          time: msg.time
+        }, { me: msg.username === username });
+      });
+
+      // Ping-pong latency measurement
+      socket.on('pong_server', (data) => {
+        const clientTs = data.ts;
+        const serverTs = data.server_ts;
+        const now = Date.now();
+        // If clientTs is numeric epoch, compute diffs; if it's ISO, just show server_ts
+        if (clientTs && !isNaN(Number(clientTs))) {
+          const rtt = now - Number(clientTs);
+          latency.textContent = `زمن الرحلة: ${rtt} ms`;
+        } else {
+          latency.textContent = `متصل · ${serverTs}`;
+        }
+      });
+
+      // Show queue info when socket reconnects/disconnects
+      socket.on('reconnect_error', () => {
+        queueInfo.style.display = msgQueue.length ? 'block' : 'none';
+      });
+
+      // start heartbeat pings
+      if (latencyTimer) clearInterval(latencyTimer);
+      latencyTimer = setInterval(() => {
+        if (socket && socket.connected) {
+          // send client timestamp to measure RTT
+          socket.emit('ping_server', { ts: Date.now() });
+        }
+      }, 5000);
+    }
+
+    // Send message: queue when disconnected, otherwise emit with ack
+    function sendMessage() {
+      const text = (messageInput.value || '').trim();
+      if (!text) return;
+      const client_id = `c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+      const payload = { username, room, text, client_id };
+      // Optimistic UI
+      addMessageToDOM({
+        type: 'message',
+        username,
+        text,
+        time: new Date().toISOString()
+      }, { me: true });
+      messageInput.value = '';
+      if (connected && socket && socket.connected) {
+        // emit with ack
+        socket.timeout(5000).emit('message', payload, (resp) => {
+          if (!resp || resp.status !== 'ok') {
+            // push to queue if server didn't ack
+            msgQueue.push(payload);
+            queueInfo.style.display = 'block';
+          } else {
+            // success — nothing to do; server will broadcast message to others
+          }
+        });
+      } else {
+        // queue locally
+        msgQueue.push(payload);
+        queueInfo.style.display = 'block';
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+    function flushQueue() {
+      if (!msgQueue.length || !connected || !socket) {
+        queueInfo.style.display = msgQueue.length ? 'block' : 'none';
+        return;
+      }
+      // send queued messages sequentially with short delay to avoid bursts
+      const pending = msgQueue.slice();
+      msgQueue = [];
+      queueInfo.style.display = 'none';
+      let idx = 0;
+      function sendNext() {
+        if (idx >= pending.length) return;
+        const payload = pending[idx++];
+        socket.timeout(5000).emit('message', payload, (resp) => {
+          if (!resp || resp.status !== 'ok') {
+            // push back to queue
+            msgQueue.push(payload);
+            queueInfo.style.display = 'block';
+          }
+          // small delay then next
+          setTimeout(sendNext, 120);
+        });
+      }
+      sendNext();
+    }
+
+    // Auto-focus message input when overlay closed
+    document.addEventListener('click', (e) => {
+      if (!overlay || overlay.style.display === 'none') {
+        messageInput.focus();
+      }
+    });
+
+    // If user navigates away, try to disconnect socket cleanly
+    window.addEventListener('beforeunload', () => {
+      try {
+        if (socket) socket.disconnect();
+      } catch (e) { /* ignore */ }
+    });
+  </script>
+</body>
+          </html>
