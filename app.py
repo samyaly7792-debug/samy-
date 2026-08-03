@@ -119,7 +119,8 @@ def current_presence():
 # -----------------------
 @app.route("/", methods=["GET"])
 def index():
-    return render_template("index.html")
+    # Pass OWNER_USERNAME into the template so client can detect owner locally if needed
+    return render_template("index.html", OWNER_USERNAME=OWNER_USERNAME)
 
 @app.route("/health", methods=["GET"])
 def health():
