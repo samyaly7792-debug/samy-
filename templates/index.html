@@ -350,11 +350,14 @@
     </div>
   </div>
 
-  <!-- Socket.IO -->
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- Socket.IO client (CDN v4.x) -->
+  <!-- Use Socket.IO client v4 to match python-socketio v5 (protocol v4) -->
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
   <script>
     // Client-side script
-    // NOTE: Do not force transports to websocket only — allow engine.io to negotiate (better compatibility on Render, proxies).
+    // NOTE: Allow engine.io to negotiate transports (do not force websocket-only)
+    // Use namespace '/chat' to match server.
     const socket = io('/chat', { reconnection: true });
 
     // Expose OWNER_USERNAME provided by server (safe JSON)
