@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-# app.py
-# "شات المهندس" - Flask + Flask-SocketIO backend
-#
-# تغييرات/تحسينات مهمة:
-# - استدعاء eventlet.monkey_patch() مبكراً قبل استيراد Flask/werkzeug لضمان توافق eventlet.
-# - معالِج 413 (ملف أكبر من الحد المسموح).
-# - تسجيل أوضح وتحذيرات عند غياب eventlet (سقوط إلى threading).
-# - باقي المنطق كما في التطبيق الأصلي (رسائل، رفع ملفات، presence، reply).
-#
-
 import os
 import uuid
 from datetime import datetime
@@ -16,10 +6,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 import logging
 
-# -----------------------
-# Preferred async driver: eventlet
-# Monkey-patch early (قبل استيراد Flask/socketio/werkzeug)
-# -----------------------
+# Ensure eventlet is monkey-patched early when available
 async_mode = None
 try:
     import eventlet  # type: ignore
@@ -28,15 +15,11 @@ try:
 except Exception:
     async_mode = "threading"
 
-# Now import framework libraries after monkey-patch
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from flask import Flask, render_template, jsonify, request, send_from_directory, abort
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
-# -----------------------
-# Configuration
-# -----------------------
 logger = logging.getLogger("chat_engineer")
 logging.basicConfig(level=logging.INFO)
 
@@ -52,29 +35,19 @@ ALLOWED_EXTENSIONS = {
     "pdf", "txt", "md", "zip", "rar", "csv"
 }
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
-
 MAX_HISTORY_PER_ROOM = 500
 
-# Flask app
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-prod")
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
-# SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode=async_mode)
 
-if async_mode != "eventlet":
-    logger.warning("eventlet not available or failed to monkey_patch — falling back to threading (not recommended for production)")
-
-# In-memory stores
 message_history = defaultdict(lambda: deque(maxlen=MAX_HISTORY_PER_ROOM))
 connected_users = {}
 GLOBAL_ROOM = "global"
 
-# -----------------------
-# Helpers
-# -----------------------
 def _now_iso():
     return datetime.utcnow().isoformat() + "Z"
 
@@ -101,9 +74,6 @@ def current_presence():
     result.sort(key=lambda x: (0 if x["is_owner"] else 1, x["joined_at"]))
     return result
 
-# -----------------------
-# Routes
-# -----------------------
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html", OWNER_USERNAME=OWNER_USERNAME)
@@ -138,14 +108,10 @@ def upload():
     url = f"/uploads/{save_name}"
     return jsonify({"success": True, "url": url, "filename": file.filename, "mimetype": file.mimetype})
 
-# Error handler for too-large uploads
 @app.errorhandler(RequestEntityTooLarge)
 def handle_file_too_large(e):
     return jsonify({"success": False, "error": "file_too_large", "max": MAX_CONTENT_LENGTH}), 413
 
-# -----------------------
-# SocketIO events
-# -----------------------
 @socketio.on("connect", namespace="/chat")
 def handle_connect():
     sid = request.sid
@@ -268,9 +234,6 @@ def handle_disconnect():
     else:
         logger.info(f"[disconnect] unknown sid disconnected")
 
-# -----------------------
-# Run
-# -----------------------
 if __name__ == "__main__":
     host = "0.0.0.0"
     port = int(os.environ.get("PORT", 5000))
