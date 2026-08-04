@@ -33,9 +33,9 @@ import logging
 # -----------------------
 # Configuration
 # -----------------------
-# Owner credentials (كما طلبت)
-OWNER_USERNAME = "المهندس"
-OWNER_PASSWORD = "samy779h"
+# Owner credentials (قابل للتعديل عبر متغيرات البيئة لتجنب حفظ الأسرار في الكود)
+OWNER_USERNAME = os.environ.get("OWNER_USERNAME", "المهندس")
+OWNER_PASSWORD = os.environ.get("OWNER_PASSWORD", "samy779h")
 
 # Upload settings
 BASE_DIR = Path(__file__).resolve().parent
