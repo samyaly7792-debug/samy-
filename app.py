@@ -6,7 +6,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 import logging
 
-# Ensure eventlet is monkey-patched early when available
+# Try to use eventlet if available (better for Socket.IO), otherwise fall back to threading.
 async_mode = None
 try:
     import eventlet  # type: ignore
@@ -15,9 +15,7 @@ try:
 except Exception:
     async_mode = "threading"
 
-# Compatibility shim for environments where pkgutil.get_loader may be removed or changed
-# (e.g., some Python 3.14 setups). Flask's scaffold.find_package calls pkgutil.get_loader;
-# if it's missing, provide a thin compatibility layer using importlib.util.find_spec.
+# Compatibility shim for environments where pkgutil.get_loader may be removed/changed
 import pkgutil
 import importlib.util
 if not hasattr(pkgutil, "get_loader"):
@@ -34,6 +32,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 logger = logging.getLogger("chat_engineer")
 logging.basicConfig(level=logging.INFO)
 
+# Owner credentials (override with environment variables)
 OWNER_USERNAME = os.environ.get("OWNER_USERNAME", "المهندس")
 OWNER_PASSWORD = os.environ.get("OWNER_PASSWORD", "samy779h")
 
@@ -53,6 +52,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-prod")
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
+# Allow any origin for quick local testing; for production restrict origins.
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode=async_mode)
 
 message_history = defaultdict(lambda: deque(maxlen=MAX_HISTORY_PER_ROOM))
@@ -249,4 +249,6 @@ if __name__ == "__main__":
     host = "0.0.0.0"
     port = int(os.environ.get("PORT", 5000))
     logger.info(f"Starting server at {host}:{port} (async_mode={async_mode})")
-    socketio.run(app, host=host, port=port)
+    # When running locally for testing, run via socketio.run.
+    # In production you may run under gunicorn/gevent/eventlet if available.
+    socketio.run(app, host=host, port=port, debug=False)
