@@ -15,6 +15,17 @@ try:
 except Exception:
     async_mode = "threading"
 
+# Compatibility shim for environments where pkgutil.get_loader may be removed or changed
+# (e.g., some Python 3.14 setups). Flask's scaffold.find_package calls pkgutil.get_loader;
+# if it's missing, provide a thin compatibility layer using importlib.util.find_spec.
+import pkgutil
+import importlib.util
+if not hasattr(pkgutil, "get_loader"):
+    def _get_loader(name):
+        spec = importlib.util.find_spec(name)
+        return getattr(spec, "loader", None) if spec is not None else None
+    pkgutil.get_loader = _get_loader
+
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from flask import Flask, render_template, jsonify, request, send_from_directory, abort
