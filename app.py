@@ -246,14 +246,7 @@ def handle_disconnect():
         logger.info(f"[disconnect] unknown sid disconnected")
 
 if __name__ == "__main__":
-    const express = require('express')
-const app = express()
-const port = process.env.PORT || 4000
-
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", 5000))
+    logger.info(f"Starting server at {host}:{port} (async_mode={async_mode})")
+    socketio.run(app, host=host, port=port)
